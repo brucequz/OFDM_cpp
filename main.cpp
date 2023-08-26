@@ -1,6 +1,7 @@
 #include <cassert>
 #include <cmath>
 #include <complex>
+#include <fstream>
 #include <iostream>
 #include <map>
 #include <string>
@@ -10,8 +11,15 @@
 #include "ofdm.h"
 
 void print1DVector(const std::vector<int>& vec);
+void output1DVector(std::ofstream& outputFile, const std::vector<int>& vec);
 
 int main() {
+  // output path
+  std::ofstream outputFile("output.txt");
+  if (!outputFile.is_open()) {
+    std::cerr << "Failed to open the file for writing." << std::endl;
+    return 1;
+  }
   // complex number
   const std::complex<double> i(0.0, 1.0);
   std::cout << i.imag() << std::endl;
@@ -26,9 +34,9 @@ int main() {
 
   Ofdm ofdm(config);
 
-  // ------------------------------- Execution Cycle -----------------------------------
-  // Symbol Error Rate for different modulation
-  std::vector<double> Pe(SNR.size(), 0);
+  // ------------------------------- Execution Cycle
+  // ----------------------------------- Symbol Error Rate for different
+  // modulation
   int mc_N = 5000;  // maximum number of iterations to achieve sufficient errors
   // SNR
   double SNR_dB_start = 2.0;
@@ -40,20 +48,28 @@ int main() {
     SNR_dB.push_back(i);
     SNR.push_back(pow(10.0, i / 10.0));
   }
+  // Error Vector
+  std::vector<double> Pe(SNR.size(), 0);
   // Modulation Schemes
   std::vector<std::string> modulation_schemes = {"bpsk", "qpsk", "qam16"};
 
   for (std::string& mod : modulation_schemes) {
     for (int i = 0; i < SNR.size(); i++) {
       double rho = SNR[i];
-      int err_cnt = 0;
+      int biterr_cnt = 0;
       for (int mc_loop = 0; mc_loop < mc_N; mc_loop++) {
         std::vector<int> data_int = ofdm.generateRandomInt(mod);
-        std::vector<complex<double>> symbol_flattened = ofdm.generateModulatedSignal(data_int, mod);
+        outputFile << "Outputing integer vector" << std::endl;
+        output1DVector(outputFile, data_int);
+        std::vector<int> data_bits = ofdm.convertIntToBits(data_int, mod);
+        outputFile << "Outputing bits vector" << std::endl;
+        output1DVector(outputFile, data_bits);
+        std::vector<std::complex<double>> symbol_flattened =
+            ofdm.generateModulatedSignal(data_int, mod);
       }
     }
   }
-
+  outputFile.close();
   return 0;
 }
 
@@ -62,4 +78,16 @@ void print1DVector(const std::vector<int>& vec) {
     std::cout << num << " ";
   }
   std::cout << std::endl;
+}
+
+void output1DVector(std::ofstream& outputFile, const std::vector<int>& vec) {
+  if (!outputFile.is_open()) {
+    std::cerr << "Output file is not open for writing." << std::endl;
+    return;
+  }
+
+  for (int value : vec) {
+    outputFile << value << " ";
+  }
+  outputFile << std::endl;
 }

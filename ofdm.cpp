@@ -83,6 +83,36 @@ std::vector<std::vector<std::complex<double>>> Ofdm::reshapeVector(
   return data_t;
 }
 
+std::vector<int> Ofdm::convertBits(int value, int num_bits) {
+  std::vector<int> bits;
+  for (int i = num_bits - 1; i >= 0; --i) {
+    int bit = (value >> i) & 1;
+    bits.push_back(bit);
+  }
+  return bits;
+}
+
+std::vector<int> Ofdm::convertIntToBits(const std::vector<int>& integers,
+                                        const std::string& constl_type) {
+  std::vector<int> bits;
+
+  int num_bits_per_symbol = 0;
+  if (constl_type == "bpsk") {
+    num_bits_per_symbol = 1;
+  } else if (constl_type == "qpsk") {
+    num_bits_per_symbol = 2;
+  } else if (constl_type == "qam16") {
+    num_bits_per_symbol = 4;
+  }
+
+  for (int value : integers) {
+    std::vector<int> value_bits = convertBits(value, num_bits_per_symbol);
+    bits.insert(bits.end(), value_bits.begin(), value_bits.end());
+  }
+
+  return bits;
+}
+
 std::vector<std::vector<std::complex<double>>> ifft(
     const std::vector<std::vector<std::complex<double>>>& input) {
   int num_rows = input.size();

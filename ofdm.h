@@ -6,7 +6,7 @@
 #include <unordered_map>
 
 #include "constellation.h"
-#include "fftw3.h"
+#include <fftw3.h>
 
 class Ofdm {
  public:
@@ -21,8 +21,10 @@ class Ofdm {
   // Helper functions
   std::vector<std::vector<std::complex<double>>> reshapeVector(
       const std::vector<std::complex<double>>& input, int rows, int cols);
+  std::vector<int> convertIntToBits(const std::vector<int>& integers,
+                                    const std::string& constl_type);
   // FFT and IFFT
-  
+
   std::vector<std::vector<std::complex<double>>> ifft(
       const std::vector<std::vector<std::complex<double>>>& input);
 
@@ -35,6 +37,7 @@ class Ofdm {
   int CP_length_;       // cyclic prefix length
   int Nh_;              // channel order
                         // You can add more private member variables here
+  std::vector<int> convertBits(int value, int num_bits);
 
   // You can also add private member functions here
 };
