@@ -14,9 +14,12 @@ void print1DVector(const std::vector<int>& vec);
 void output1DVector(std::ofstream& outputFile, const std::vector<int>& vec);
 void printComplexVector2D(
     const std::vector<std::vector<std::complex<double>>>& vec2D);
+void output1DComplexVector(std::ofstream& outputFile, const std::vector<std::complex<double>>& vec);
 void output2DComplexVector(
     std::ofstream& outputFile,
     const std::vector<std::vector<std::complex<double>>>& vec2D);
+std::vector<std::complex<double>> normalize(
+    const std::vector<std::complex<double>>& input);
 
 int main() {
   // output path
@@ -43,18 +46,21 @@ int main() {
   // ----------------------------------- Symbol Error Rate for different
   // modulation
   int mc_N = 5000;  // maximum number of iterations to achieve sufficient errors
+
   // SNR
-  double SNR_dB_start = 2.0;
+  double SNR_dB_start = 0.0;
   double SNR_dB_end = 20.0;
-  double SNR_dB_step = 0.5;
+  double SNR_dB_step = 2.0;
   std::vector<double> SNR_dB = {};
   std::vector<double> SNR = {};
   for (double i = SNR_dB_start; i < SNR_dB_end; i += SNR_dB_step) {
     SNR_dB.push_back(i);
     SNR.push_back(pow(10.0, i / 10.0));
   }
+
   // Error Vector
   std::vector<double> Pe(SNR.size(), 0);
+
   // Modulation Schemes
   std::vector<std::string> modulation_schemes = {"bpsk", "qpsk", "qam16"};
 
@@ -67,18 +73,58 @@ int main() {
         std::vector<int> data_int = ofdm.generateRandomInt(mod);
         outputFile << "Outputing integer vector" << std::endl;
         output1DVector(outputFile, data_int);
+
         std::vector<int> data_bits = ofdm.convertIntToBits(data_int, mod);
         outputFile << "Outputing bits vector" << std::endl;
         output1DVector(outputFile, data_bits);
+
         std::vector<std::vector<std::complex<double>>> data_sym =
             ofdm.generateModulatedSignal(data_int, mod);
-        std::vector<std::complex<double>> data_flattened = ofdm.flattenVector(data_sym);
+        std::vector<std::complex<double>> data_flattened =
+            ofdm.flattenVector(data_sym);
+
         // IFFT
         std::vector<std::vector<std::complex<double>>> data_ifft =
             ofdm.ifft(data_sym);
-        ;
         outputFile << "Outputing ifft vector" << std::endl;
         output2DComplexVector(outputFile, data_ifft);
+
+        // cyclic prefix
+        std::vector<std::vector<std::complex<double>>> data_cp =
+            ofdm.addCyclicPrefix(data_ifft);
+        outputFile << "Outputing cp vector" << std::endl;
+        output2DComplexVector(outputFile, data_cp);
+
+        // Reshape the BxN matrix to obtain the frame (1xTotal_length)
+        // Total_length = (CP_length+L)*B
+        std::vector<std::complex<double>> data_tx = ofdm.flattenVector(ofdm.transpose2DComplexVector(data_cp));
+
+        // Define the channel response
+        // deterministic frequency-selective channel
+        std::complex<double> h1(3.0, 0.0);
+        std::complex<double> h2(-1.0 *
+                                std::exp(std::complex<double>(0.0, 0.13)));
+        std::complex<double> h3(1.0 *
+                                std::exp(std::complex<double>(0.0, -0.35)));
+        std::complex<double> h4(0.0, 0.0);
+        std::complex<double> h5(4.0 *
+                                std::exp(std::complex<double>(0.0, 1.03)));
+
+        // Create a vector of complex numbers
+        std::vector<std::complex<double>> h = {h1, h2, h3, h4, h5};
+        std::vector<std::complex<double>> h_normalized = normalize(h);
+
+        std::vector<std::complex<double>> rec =
+            ofdm.filter(data_tx, h_normalized);
+        for (std::complex<double>& value : rec) {
+          value *= std::sqrt(rho);
+        }
+
+        // Add Noise
+        std::vector<std::complex<double>> received = ofdm.addAWGN(rec);
+        outputFile << "Outputing received symbols (with noise)" << std::endl;
+        output1DComplexVector(outputFile, received);
+
         break;
       }
       break;
@@ -127,6 +173,17 @@ void printComplexVector2D(
   }
 }
 
+void output1DComplexVector(std::ofstream& outputFile, const std::vector<std::complex<double>>& vec) {
+  if (!outputFile.is_open()) {
+    std::cerr << "Output file is not open for writing." << std::endl;
+    return;
+  }
+  for (const auto& value : vec) {
+    outputFile << "(" << value.real() << ", " << value.imag() << ") ";
+  }
+  outputFile << std::endl;
+}
+
 void output2DComplexVector(
     std::ofstream& outputFile,
     const std::vector<std::vector<std::complex<double>>>& vec2D) {
@@ -141,4 +198,21 @@ void output2DComplexVector(
     }
     outputFile << std::endl;
   }
+}
+
+std::vector<std::complex<double>> normalize(
+    const std::vector<std::complex<double>>& input) {
+  double sum_of_abs_squares = 0.0;
+  for (const std::complex<double>& value : input) {
+    sum_of_abs_squares += std::norm(value);
+  }
+
+  double normalization_factor = std::sqrt(sum_of_abs_squares);
+
+  std::vector<std::complex<double>> normalized_vector;
+  for (const std::complex<double>& value : input) {
+    normalized_vector.push_back(value / normalization_factor);
+  }
+
+  return normalized_vector;
 }

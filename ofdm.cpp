@@ -5,6 +5,7 @@
 #include <complex>
 #include <iostream>
 #include <map>
+#include <random>
 #include <string>
 #include <vector>
 
@@ -118,6 +119,23 @@ std::vector<int> Ofdm::convertIntToBits(const std::vector<int>& integers,
   return bits;
 }
 
+std::vector<std::vector<std::complex<double>>> Ofdm::transpose2DComplexVector(
+    const std::vector<std::vector<std::complex<double>>>& input) {
+  int rows = input.size();
+  int cols = input[0].size();
+
+  std::vector<std::vector<std::complex<double>>> transposed(
+      cols, std::vector<std::complex<double>>(rows));
+
+  for (int i = 0; i < rows; ++i) {
+    for (int j = 0; j < cols; ++j) {
+      transposed[j][i] = input[i][j];
+    }
+  }
+
+  return transposed;
+}
+
 std::vector<std::vector<std::complex<double>>> Ofdm::ifft(
     const std::vector<std::vector<std::complex<double>>>& input) {
   /*
@@ -155,4 +173,62 @@ std::vector<std::vector<std::complex<double>>> Ofdm::ifft(
   fftw_destroy_plan(plan);
 
   return output;
+}
+
+std::vector<std::vector<std::complex<double>>> Ofdm::addCyclicPrefix(
+    std::vector<std::vector<std::complex<double>>> vec2D) {
+  int numRows = vec2D.size();
+  int numCols = vec2D[0].size();
+
+  if (CP_length_ >= numCols) {
+    std::cerr << "Number of columns to copy is greater than or equal to the "
+                 "total number of columns."
+              << std::endl;
+    return {};
+  }
+
+  for (int i = 0; i < numRows; ++i) {
+    std::vector<std::complex<double>> newCols(vec2D[i].end() - CP_length_,
+                                              vec2D[i].end());
+    vec2D[i].insert(vec2D[i].begin(), newCols.begin(), newCols.end());
+  }
+  return vec2D;
+}
+
+std::vector<std::complex<double>> Ofdm::addAWGN(
+    const std::vector<std::complex<double>>& signal) {
+  std::default_random_engine generator;
+  std::normal_distribution<double> distribution(0.0, std::sqrt(0.5 / L_));
+
+  std::vector<std::complex<double>> noisy_signal;
+  noisy_signal.reserve(signal.size());
+
+  for (const std::complex<double>& value : signal) {
+    double noise_real = distribution(generator);
+    double noise_imag = distribution(generator);
+
+    std::complex<double> noisy_value(value.real() + noise_real,
+                                     value.imag() + noise_imag);
+    noisy_signal.push_back(noisy_value);
+  }
+
+  return noisy_signal;
+}
+
+std::vector<std::complex<double>> Ofdm::filter(
+    const std::vector<std::complex<double>>& signal,
+    const std::vector<std::complex<double>>& filter_coeffs) {
+  int signal_size = signal.size();
+  int filter_size = filter_coeffs.size();
+
+  std::vector<std::complex<double>> result(signal_size + filter_size - 1,
+                                           std::complex<double>(0.0, 0.0));
+
+  for (int i = 0; i < signal_size; ++i) {
+    for (int j = 0; j < filter_size; ++j) {
+      result[i + j] += signal[i] * filter_coeffs[j];
+    }
+  }
+
+  return result;
 }
