@@ -12,6 +12,8 @@
 
 void print1DVector(const std::vector<int>& vec);
 void output1DVector(std::ofstream& outputFile, const std::vector<int>& vec);
+void printComplexVector2D(
+    const std::vector<std::vector<std::complex<double>>>& vec2D);
 
 int main() {
   // output path
@@ -53,9 +55,10 @@ int main() {
   // Modulation Schemes
   std::vector<std::string> modulation_schemes = {"bpsk", "qpsk", "qam16"};
 
-  for (std::string& mod : modulation_schemes) {
+  for (const std::string& mod : modulation_schemes) {
     for (int i = 0; i < SNR.size(); i++) {
       double rho = SNR[i];
+      outputFile << "For SNR = " << rho << ": " << std::endl;
       int biterr_cnt = 0;
       for (int mc_loop = 0; mc_loop < mc_N; mc_loop++) {
         std::vector<int> data_int = ofdm.generateRandomInt(mod);
@@ -66,9 +69,21 @@ int main() {
         output1DVector(outputFile, data_bits);
         std::vector<std::complex<double>> symbol_flattened =
             ofdm.generateModulatedSignal(data_int, mod);
+        break;
       }
+      break;
     }
   }
+  std::vector<std::vector<std::complex<double>>> input;
+  std::vector<std::complex<double>> row_1 = {};
+  std::vector<int> data_tx = {1,  -1, 1,  1,  -1, -1, 1, 1,
+                              -1, -1, -1, -1, -1, -1, 1, -1};
+  for (int i : data_tx) {
+    row_1.push_back(static_cast<double>(i));
+  }
+  input.push_back(row_1);
+  std::vector<std::vector<std::complex<double>>> result = ofdm.ifft(input);
+  printComplexVector2D(result);
   outputFile.close();
   return 0;
 }
@@ -90,4 +105,14 @@ void output1DVector(std::ofstream& outputFile, const std::vector<int>& vec) {
     outputFile << value << " ";
   }
   outputFile << std::endl;
+}
+
+void printComplexVector2D(
+    const std::vector<std::vector<std::complex<double>>>& vec2D) {
+  for (const auto& row : vec2D) {
+    for (const std::complex<double>& value : row) {
+      std::cout << value << " ";
+    }
+    std::cout << std::endl;
+  }
 }

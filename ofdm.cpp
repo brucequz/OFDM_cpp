@@ -113,7 +113,7 @@ std::vector<int> Ofdm::convertIntToBits(const std::vector<int>& integers,
   return bits;
 }
 
-std::vector<std::vector<std::complex<double>>> ifft(
+std::vector<std::vector<std::complex<double>>> Ofdm::ifft(
     const std::vector<std::vector<std::complex<double>>>& input) {
   int num_rows = input.size();
   int num_cols = input[0].size();
