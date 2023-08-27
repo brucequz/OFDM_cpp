@@ -1,12 +1,13 @@
 #ifndef OFDM
 #define OFDM
 
+#include <fftw3.h>
+
 #include <map>
 #include <string>
 #include <unordered_map>
 
 #include "constellation.h"
-#include <fftw3.h>
 
 class Ofdm {
  public:
@@ -16,11 +17,11 @@ class Ofdm {
   ~Ofdm();
   // random number generator
   std::vector<int> generateRandomInt(const std::string& constl_type);
-  std::vector<std::complex<double>> generateModulatedSignal(
+  std::vector<std::vector<std::complex<double>>> generateModulatedSignal(
       const std::vector<int>& integers, const std::string& constl_type);
   // Helper functions
-  std::vector<std::vector<std::complex<double>>> reshapeVector(
-      const std::vector<std::complex<double>>& input, int rows, int cols);
+  std::vector<std::complex<double>> flattenVector(
+      const std::vector<std::vector<std::complex<double>>>& input);
   std::vector<int> convertIntToBits(const std::vector<int>& integers,
                                     const std::string& constl_type);
   // FFT and IFFT

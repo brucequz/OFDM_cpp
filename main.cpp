@@ -14,6 +14,9 @@ void print1DVector(const std::vector<int>& vec);
 void output1DVector(std::ofstream& outputFile, const std::vector<int>& vec);
 void printComplexVector2D(
     const std::vector<std::vector<std::complex<double>>>& vec2D);
+void output2DComplexVector(
+    std::ofstream& outputFile,
+    const std::vector<std::vector<std::complex<double>>>& vec2D);
 
 int main() {
   // output path
@@ -67,8 +70,15 @@ int main() {
         std::vector<int> data_bits = ofdm.convertIntToBits(data_int, mod);
         outputFile << "Outputing bits vector" << std::endl;
         output1DVector(outputFile, data_bits);
-        std::vector<std::complex<double>> symbol_flattened =
+        std::vector<std::vector<std::complex<double>>> data_sym =
             ofdm.generateModulatedSignal(data_int, mod);
+        std::vector<std::complex<double>> data_flattened = ofdm.flattenVector(data_sym);
+        // IFFT
+        std::vector<std::vector<std::complex<double>>> data_ifft =
+            ofdm.ifft(data_sym);
+        ;
+        outputFile << "Outputing ifft vector" << std::endl;
+        output2DComplexVector(outputFile, data_ifft);
         break;
       }
       break;
@@ -114,5 +124,21 @@ void printComplexVector2D(
       std::cout << value << " ";
     }
     std::cout << std::endl;
+  }
+}
+
+void output2DComplexVector(
+    std::ofstream& outputFile,
+    const std::vector<std::vector<std::complex<double>>>& vec2D) {
+  if (!outputFile.is_open()) {
+    std::cerr << "Output file is not open for writing." << std::endl;
+    return;
+  }
+
+  for (const auto& row : vec2D) {
+    for (const std::complex<double>& value : row) {
+      outputFile << "(" << value.real() << ", " << value.imag() << ") ";
+    }
+    outputFile << std::endl;
   }
 }

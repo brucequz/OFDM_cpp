@@ -16,10 +16,10 @@ std::vector<std::complex<double>> Constellation::bpsk() {
 
 std::vector<std::complex<double>> Constellation::qpsk() {
   std::vector<std::complex<double>> constl;
-  constl.push_back(std::complex<double>(1.0, 1.0));    // symbol 00
-  constl.push_back(std::complex<double>(1.0, -1.0));   // symbol 01
-  constl.push_back(std::complex<double>(-1.0, 1.0));   // symbol 10
-  constl.push_back(std::complex<double>(-1.0, -1.0));  // symbol 11
+  constl.push_back(std::complex<double>(1.0, 0.0));    // symbol 00
+  constl.push_back(std::complex<double>(0.0, 1.0));   // symbol 01
+  constl.push_back(std::complex<double>(0.0, -1.0));   // symbol 10
+  constl.push_back(std::complex<double>(-1.0, 0.0));  // symbol 11
   return constl;
 }
 

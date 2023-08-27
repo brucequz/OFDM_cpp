@@ -48,39 +48,44 @@ std::vector<int> Ofdm::generateRandomInt(const std::string& constl_type) {
   return randomIntegers;
 }
 
-std::vector<std::complex<double>> Ofdm::generateModulatedSignal(
+std::vector<std::vector<std::complex<double>>> Ofdm::generateModulatedSignal(
     const std::vector<int>& integers, const std::string& constl_type) {
-  std::vector<std::complex<double>> modulated_signal;
+  std::vector<std::vector<std::complex<double>>> modulated_signal;
   std::vector<std::complex<double>> constellation =
       constellations_[constl_type];
 
-  for (int i = 0; i < integers.size(); i++) {
-    modulated_signal.push_back(constellation[integers[i]]);
+  int total_elements = B_ * L_;
+
+  if (integers.size() != total_elements) {
+    std::cout << "Cannot generate modulated signal. Input vector size does not "
+                 "match target size.\n";
+    return {};
+  }
+
+  modulated_signal.resize(B_, std::vector<std::complex<double>>(L_));
+
+  for (int i = 0; i < B_; ++i) {
+    for (int j = 0; j < L_; ++j) {
+      modulated_signal[i][j] = constellation[integers[i * L_ + j]];
+    }
   }
 
   return modulated_signal;
 }
 
-std::vector<std::vector<std::complex<double>>> Ofdm::reshapeVector(
-    const std::vector<std::complex<double>>& input, int rows, int cols) {
-  int total_elements = rows * cols;
-
-  if (input.size() != total_elements) {
-    std::cout
-        << "Cannot reshape. Input vector size does not match target size.\n";
-    return {};
-  }
-
-  std::vector<std::vector<std::complex<double>>> data_t(
-      rows, std::vector<std::complex<double>>(cols));
+std::vector<std::complex<double>> Ofdm::flattenVector(
+    const std::vector<std::vector<std::complex<double>>>& input) {
+  std::vector<std::complex<double>> flattened_vector;
+  int rows = input.size();
+  int cols = input[0].size();
 
   for (int i = 0; i < rows; ++i) {
     for (int j = 0; j < cols; ++j) {
-      data_t[i][j] = input[i * cols + j];
+      flattened_vector.push_back(input[i][j]);
     }
   }
 
-  return data_t;
+  return flattened_vector;
 }
 
 std::vector<int> Ofdm::convertBits(int value, int num_bits) {
@@ -115,6 +120,10 @@ std::vector<int> Ofdm::convertIntToBits(const std::vector<int>& integers,
 
 std::vector<std::vector<std::complex<double>>> Ofdm::ifft(
     const std::vector<std::vector<std::complex<double>>>& input) {
+  /*
+    normalization factor sqrt(L) is incorporated in ifft
+    " * sqrt(static_cast<double>(L_)); "
+  */
   int num_rows = input.size();
   int num_cols = input[0].size();
 
@@ -138,7 +147,8 @@ std::vector<std::vector<std::complex<double>>> Ofdm::ifft(
     fftw_execute_dft(plan, in, out);
 
     for (int j = 0; j < num_cols; ++j) {
-      output[i][j] = row_output[j] / static_cast<double>(num_cols);
+      output[i][j] = row_output[j] / static_cast<double>(num_cols) *
+                     sqrt(static_cast<double>(L_));
     }
   }
 
