@@ -1,3 +1,5 @@
+#include <mat.h>
+
 #include <cassert>
 #include <cmath>
 #include <complex>
@@ -14,12 +16,15 @@ void print1DVector(const std::vector<int>& vec);
 void output1DVector(std::ofstream& outputFile, const std::vector<int>& vec);
 void printComplexVector2D(
     const std::vector<std::vector<std::complex<double>>>& vec2D);
-void output1DComplexVector(std::ofstream& outputFile, const std::vector<std::complex<double>>& vec);
+void output1DComplexVector(std::ofstream& outputFile,
+                           const std::vector<std::complex<double>>& vec);
 void output2DComplexVector(
     std::ofstream& outputFile,
     const std::vector<std::vector<std::complex<double>>>& vec2D);
 std::vector<std::complex<double>> normalize(
     const std::vector<std::complex<double>>& input);
+std::vector<std::vector<std::complex<double>>> readComplexMatFile(
+    const std::string& filename);
 
 int main() {
   // output path
@@ -97,7 +102,8 @@ int main() {
 
         // Reshape the BxN matrix to obtain the frame (1xTotal_length)
         // Total_length = (CP_length+L)*B
-        std::vector<std::complex<double>> data_tx = ofdm.flattenVector(ofdm.transpose2DComplexVector(data_cp));
+        std::vector<std::complex<double>> data_tx =
+            ofdm.flattenVector(ofdm.transpose2DComplexVector(data_cp));
 
         // Define the channel response
         // deterministic frequency-selective channel
@@ -119,17 +125,32 @@ int main() {
         for (std::complex<double>& value : rec) {
           value *= std::sqrt(rho);
         }
+        outputFile << "Outputing received symbols (no noise)" << std::endl;
+        output1DComplexVector(outputFile, rec);
 
         // Add Noise
         std::vector<std::complex<double>> received = ofdm.addAWGN(rec);
         outputFile << "Outputing received symbols (with noise)" << std::endl;
         output1DComplexVector(outputFile, received);
 
+        std::cout << rec.size() << std::endl;
+
+        // remove cyclic prefix
+        std::vector<std::vector<std::complex<double>>> rec_sans_cp =
+            ofdm.removeCyclicPrefix(received);
+
+        // FFT
+        std::vector<std::vector<std::complex<double>>> rec_f =
+            ofdm.fft(rec_sans_cp);
+
         break;
       }
       break;
     }
+    break;
   }
+
+  // IFFT Test
   std::vector<std::vector<std::complex<double>>> input;
   std::vector<std::complex<double>> row_1 = {};
   std::vector<int> data_tx = {1,  -1, 1,  1,  -1, -1, 1, 1,
@@ -140,6 +161,27 @@ int main() {
   input.push_back(row_1);
   std::vector<std::vector<std::complex<double>>> result = ofdm.ifft(input);
   printComplexVector2D(result);
+
+  // FFT Test
+  std::string filename = "../rec.mat";
+  std::vector<std::vector<std::complex<double>>> complexData =
+      readComplexMatFile(filename);
+  outputFile << "FFT Test" << std::endl;
+  outputFile << "Outputing rec data (without noise)" << std::endl;
+  output2DComplexVector(outputFile, complexData);
+  
+  std::vector<std::vector<std::complex<double>>> rec_sans_cp =
+            ofdm.removeCyclicPrefix(complexData[0]);
+  outputFile << "Outputing remove cyclic prefix result" << std::endl;
+  output2DComplexVector(outputFile, rec_sans_cp);
+  std::cout << "Remove cp size: " << rec_sans_cp.size() << " x " << rec_sans_cp[0].size() << std::endl;
+
+  // FFT
+  std::vector<std::vector<std::complex<double>>> rec_f =
+      ofdm.fft(rec_sans_cp);
+  outputFile << "Outputing fft result" << std::endl;
+  output2DComplexVector(outputFile, rec_f);
+
   outputFile.close();
   return 0;
 }
@@ -173,7 +215,8 @@ void printComplexVector2D(
   }
 }
 
-void output1DComplexVector(std::ofstream& outputFile, const std::vector<std::complex<double>>& vec) {
+void output1DComplexVector(std::ofstream& outputFile,
+                           const std::vector<std::complex<double>>& vec) {
   if (!outputFile.is_open()) {
     std::cerr << "Output file is not open for writing." << std::endl;
     return;
@@ -215,4 +258,44 @@ std::vector<std::complex<double>> normalize(
   }
 
   return normalized_vector;
+}
+
+std::vector<std::vector<std::complex<double>>> readComplexMatFile(
+    const std::string& filename) {
+  // Open the .mat file
+  MATFile* matFile = matOpen(filename.c_str(), "r");
+  if (!matFile) {
+    std::cerr << "Failed to open the .mat file." << std::endl;
+    return {};
+  }
+
+  // Get the complex variable from the .mat file
+  mxArray* mxArrayComplex = matGetVariable(matFile, "rec");
+  if (!mxArrayComplex) {
+    std::cerr << "Failed to get the variable from the .mat file." << std::endl;
+    matClose(matFile);
+    return {};
+  }
+
+  // Extract complex data from mxArray and store it in a 2D vector
+  mwSize numRows = mxGetM(mxArrayComplex);
+  mwSize numCols = mxGetN(mxArrayComplex);
+
+  const std::complex<double>* complexData =
+      reinterpret_cast<const std::complex<double>*>(
+          mxGetComplexDoubles(mxArrayComplex));
+
+  std::vector<std::vector<std::complex<double>>> complexVector2D(
+      numRows, std::vector<std::complex<double>>(numCols));
+  for (mwSize i = 0; i < numRows; ++i) {
+    for (mwSize j = 0; j < numCols; ++j) {
+      complexVector2D[i][j] = complexData[i + j * numRows];
+    }
+  }
+
+  // Clean up and close the .mat file
+  mxDestroyArray(mxArrayComplex);
+  matClose(matFile);
+
+  return complexVector2D;
 }

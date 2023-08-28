@@ -136,6 +136,96 @@ std::vector<std::vector<std::complex<double>>> Ofdm::transpose2DComplexVector(
   return transposed;
 }
 
+std::vector<std::vector<std::complex<double>>> Ofdm::reshape(
+    const std::vector<std::complex<double>>& input, int num_rows,
+    int num_cols) {
+  int total_elements = num_rows * num_cols;
+
+  if (input.size() != total_elements) {
+    std::cout
+        << "Cannot reshape. Input vector size does not match target size.\n";
+    return {};
+  }
+
+  std::vector<std::vector<std::complex<double>>> reshaped(
+      num_rows, std::vector<std::complex<double>>(num_cols));
+
+  for (int i = 0; i < num_rows; ++i) {
+    for (int j = 0; j < num_cols; ++j) {
+      reshaped[i][j] = input[i * num_cols + j];
+    }
+  }
+
+  return reshaped;
+}
+
+std::vector<std::vector<std::complex<double>>> Ofdm::columnMajorReshape(
+    const std::vector<std::complex<double>>& input, int num_rows,
+    int num_cols) {
+  int total_elements = num_rows * num_cols;
+
+  if (input.size() != total_elements) {
+    std::cout << "Cannot column-major reshape. Input vector size does not "
+                 "match target size.\n";
+    return {};
+  }
+
+  std::vector<std::vector<std::complex<double>>> reshaped(
+      num_rows, std::vector<std::complex<double>>(num_cols));
+
+  for (int i = 0; i < num_rows; ++i) {
+    for (int j = 0; j < num_cols; ++j) {
+      reshaped[i][j] = input[i + j * num_rows];
+    }
+  }
+
+  return reshaped;
+}
+
+std::vector<std::vector<std::complex<double>>> Ofdm::fft(
+    const std::vector<std::vector<std::complex<double>>>& input) {
+  /*
+    normalization factor sqrt(L) is incorporated in ifft
+    " / sqrt(static_cast<double>(L_)); "
+  */
+  int numRows = input.size();
+  int numCols = input[0].size();
+
+  // Allocate space for the FFTW input and output arrays
+  fftw_complex* in = reinterpret_cast<fftw_complex*>(
+      fftw_malloc(sizeof(fftw_complex) * numCols));
+  fftw_complex* out = reinterpret_cast<fftw_complex*>(
+      fftw_malloc(sizeof(fftw_complex) * numCols));
+
+  // Create an FFTW plan for the 1D FFT
+  fftw_plan plan =
+      fftw_plan_dft_1d(numCols, in, out, FFTW_FORWARD, FFTW_ESTIMATE);
+
+  // Initialize the output vector
+  std::vector<std::vector<std::complex<double>>> output(
+      numRows, std::vector<std::complex<double>>(numCols));
+
+  // Perform FFT along rows
+  for (int i = 0; i < numRows; ++i) {
+    for (int j = 0; j < numCols; ++j) {
+      in[j][0] = input[i][j].real();
+      in[j][1] = input[i][j].imag();
+    }
+    fftw_execute(plan);
+    for (int j = 0; j < numCols; ++j) {
+      output[i][j] = std::complex<double>(out[j][0], out[j][1]) /
+                     std::sqrt(static_cast<double>(L_));
+    }
+  }
+
+  // Clean up FFTW resources
+  fftw_destroy_plan(plan);
+  fftw_free(in);
+  fftw_free(out);
+
+  return output;
+}
+
 std::vector<std::vector<std::complex<double>>> Ofdm::ifft(
     const std::vector<std::vector<std::complex<double>>>& input) {
   /*
@@ -195,6 +285,25 @@ std::vector<std::vector<std::complex<double>>> Ofdm::addCyclicPrefix(
   return vec2D;
 }
 
+std::vector<std::vector<std::complex<double>>> Ofdm::removeCyclicPrefix(
+    std::vector<std::complex<double>> input) {
+  std::vector<std::vector<std::complex<double>>> rec_reshaped =
+      transpose2DComplexVector(columnMajorReshape(input, CP_length_ + L_, B_));
+
+  std::vector<std::vector<std::complex<double>>> rec_sans_cp;
+  for (const auto& row : rec_reshaped) {
+    int num_cols_original = row.size();
+    int num_cols_remaining = num_cols_original - CP_length_;
+
+    if (num_cols_remaining > 0) {
+      std::vector<std::complex<double>> truncated_row(row.begin() + CP_length_,
+                                                      row.end());
+      rec_sans_cp.push_back(truncated_row);
+    }
+  }
+  return rec_sans_cp;
+}
+
 std::vector<std::complex<double>> Ofdm::addAWGN(
     const std::vector<std::complex<double>>& signal) {
   std::default_random_engine generator;
@@ -228,6 +337,10 @@ std::vector<std::complex<double>> Ofdm::filter(
     for (int j = 0; j < filter_size; ++j) {
       result[i + j] += signal[i] * filter_coeffs[j];
     }
+  }
+
+  for (int i = 0; i < CP_length_; ++i) {
+    result.pop_back();
   }
 
   return result;

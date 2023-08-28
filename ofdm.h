@@ -33,7 +33,18 @@ class Ofdm {
   std::vector<std::vector<std::complex<double>>> transpose2DComplexVector(
       const std::vector<std::vector<std::complex<double>>>& input);
 
+  std::vector<std::vector<std::complex<double>>> reshape(
+      const std::vector<std::complex<double>>& input, int num_rows,
+      int num_cols);
+
+  std::vector<std::vector<std::complex<double>>> columnMajorReshape(
+      const std::vector<std::complex<double>>& input, int num_rows,
+      int num_cols);
+
   // FFT and IFFT
+  std::vector<std::vector<std::complex<double>>> fft(
+      const std::vector<std::vector<std::complex<double>>>& input);
+
   std::vector<std::vector<std::complex<double>>> ifft(
       const std::vector<std::vector<std::complex<double>>>& input);
 
@@ -42,7 +53,7 @@ class Ofdm {
       std::vector<std::vector<std::complex<double>>> vec2D);
 
   std::vector<std::vector<std::complex<double>>> removeCyclicPrefix(
-      std::vector<std::vector<std::complex<double>>>& input);
+      std::vector<std::complex<double>> input);
 
   // AWGN Noise
   std::vector<std::complex<double>> addAWGN(
@@ -61,7 +72,6 @@ class Ofdm {
   int L_;               // number of subcarriers in each OFDM symbol
   int CP_length_;       // cyclic prefix length
   int Nh_;              // channel order
-                        // You can add more private member variables here
   std::vector<int> convertBits(int value, int num_bits);
 
   // You can also add private member functions here
