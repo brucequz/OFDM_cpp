@@ -226,6 +226,43 @@ std::vector<std::vector<std::complex<double>>> Ofdm::fft(
   return output;
 }
 
+std::vector<std::complex<double>> Ofdm::fft(const std::vector<std::complex<double>>& input, int n) {
+  if (n <= 0 || (n & (n - 1)) != 0) {
+    throw std::invalid_argument("Input size n must be a power of 2");
+  }
+
+  int input_size = input.size();
+
+  // Create a plan for the forward FFT
+  fftw_plan plan_forward = fftw_plan_dft_1d(n, reinterpret_cast<fftw_complex*>(const_cast<std::complex<double>*>(input.data())),
+                                            reinterpret_cast<fftw_complex*>(const_cast<std::complex<double>*>(input.data())), FFTW_FORWARD, FFTW_ESTIMATE);
+
+  std::vector<std::complex<double>> result(n);
+
+  if (input_size <= n) {
+    // Pad input with zeros if needed
+    std::copy(input.begin(), input.end(), result.begin());
+    std::fill(result.begin() + input_size, result.end(), std::complex<double>(0.0, 0.0));
+  } else {
+    // Truncate input if needed
+    std::copy(input.begin(), input.begin() + n, result.begin());
+  }
+
+  // Perform the forward FFT
+  fftw_execute(plan_forward);
+
+  // Normalize the result
+  double scale = 1.0 / static_cast<double>(n);
+  for (int i = 0; i < n; ++i) {
+    result[i] *= scale;
+  }
+
+  // Clean up the plan
+  fftw_destroy_plan(plan_forward);
+
+  return result;
+}
+
 std::vector<std::vector<std::complex<double>>> Ofdm::ifft(
     const std::vector<std::vector<std::complex<double>>>& input) {
   /*

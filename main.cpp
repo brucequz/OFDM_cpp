@@ -133,8 +133,6 @@ int main() {
         outputFile << "Outputing received symbols (with noise)" << std::endl;
         output1DComplexVector(outputFile, received);
 
-        std::cout << rec.size() << std::endl;
-
         // remove cyclic prefix
         std::vector<std::vector<std::complex<double>>> rec_sans_cp =
             ofdm.removeCyclicPrefix(received);
@@ -142,7 +140,11 @@ int main() {
         // FFT
         std::vector<std::vector<std::complex<double>>> rec_f =
             ofdm.fft(rec_sans_cp);
-
+        
+        // TODO: Channel response FFT
+        // std::vector<std::complex<double>> H_f = ofdm.fft(h, config["L"]);
+        // std::cout << std::endl << "H_f: ";
+        // printComplexVector2D({H_f});
         break;
       }
       break;
@@ -169,16 +171,16 @@ int main() {
   outputFile << "FFT Test" << std::endl;
   outputFile << "Outputing rec data (without noise)" << std::endl;
   output2DComplexVector(outputFile, complexData);
-  
+
   std::vector<std::vector<std::complex<double>>> rec_sans_cp =
-            ofdm.removeCyclicPrefix(complexData[0]);
+      ofdm.removeCyclicPrefix(complexData[0]);
   outputFile << "Outputing remove cyclic prefix result" << std::endl;
   output2DComplexVector(outputFile, rec_sans_cp);
-  std::cout << "Remove cp size: " << rec_sans_cp.size() << " x " << rec_sans_cp[0].size() << std::endl;
+  std::cout << "Remove cp size: " << rec_sans_cp.size() << " x "
+            << rec_sans_cp[0].size() << std::endl;
 
   // FFT
-  std::vector<std::vector<std::complex<double>>> rec_f =
-      ofdm.fft(rec_sans_cp);
+  std::vector<std::vector<std::complex<double>>> rec_f = ofdm.fft(rec_sans_cp);
   outputFile << "Outputing fft result" << std::endl;
   output2DComplexVector(outputFile, rec_f);
 

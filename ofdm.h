@@ -45,6 +45,8 @@ class Ofdm {
   std::vector<std::vector<std::complex<double>>> fft(
       const std::vector<std::vector<std::complex<double>>>& input);
 
+  std::vector<std::complex<double>> fft(const std::vector<std::complex<double>>& input, int n);
+
   std::vector<std::vector<std::complex<double>>> ifft(
       const std::vector<std::vector<std::complex<double>>>& input);
 
