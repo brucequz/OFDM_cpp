@@ -8,10 +8,25 @@
 
 ## Cmake commands
 mkdir build
+
 cd build
+
 cmake ../
+
 make &or& make --build .
+
 ./ofdm
+
+## Debug Info
+I use the built-in lldb debugger for this project. 
+
+To start debugging, use 'lldb ofdm' after cmake. Use "b ${file_name} : ${line_number}" to set a breakpoint. After setting breakpoints, use "r" to run the debugger.
+
+* s: step in
+* c: continue
+* n: step over 
+* p ${var_name}: print variable
+* q: quit debugger
 ## Note:
 
 1. MATLAB does column-major reshape operations, while C++ performs row-major operation. Be cautious!
