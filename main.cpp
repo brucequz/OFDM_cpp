@@ -141,10 +141,9 @@ int main() {
         std::vector<std::vector<std::complex<double>>> rec_f =
             ofdm.fft(rec_sans_cp);
         
-        // TODO: Channel response FFT
-        // std::vector<std::complex<double>> H_f = ofdm.fft(h, config["L"]);
-        // std::cout << std::endl << "H_f: ";
-        // printComplexVector2D({H_f});
+        // channel FFT
+        std::vector<std::complex<double>> H_f = ofdm.fft(normalize(h), config["L"]);
+        
         break;
       }
       break;
