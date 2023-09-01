@@ -32,4 +32,19 @@ To start debugging, use 'lldb ofdm' after cmake. Use "b ${file_name} : ${line_nu
 1. MATLAB does column-major reshape operations, while C++ performs row-major operation. Be cautious!
 2. filter() in ofdm.cpp does convolution by brute force. Truncate the last $(CP_length_) elements to get the desired behavior.
 
+(10 x 16)
+             *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * 
+             *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  <---- an OFDM symbol
+             *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * 
+             *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * 
+                                  .
+                                  .
+                                  .
+             *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * 
+             *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *      
 
+                      ^
+                      |
+                      |
+                      |
+                      one subcarrier

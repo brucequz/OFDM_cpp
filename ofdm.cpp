@@ -27,6 +27,9 @@ Ofdm::Ofdm(const std::map<std::string, int>& config) {
   constellations_["bpsk"] = constl_->bpsk();
   constellations_["qpsk"] = constl_->qpsk();
   constellations_["qam16"] = constl_->qam(16);
+
+  // Random number generator
+  std::srand(static_cast<unsigned>(std::time(nullptr)));
 }
 
 Ofdm::~Ofdm() {
@@ -65,28 +68,13 @@ std::vector<std::vector<std::complex<double>>> Ofdm::generateModulatedSignal(
 
   modulated_signal.resize(B_, std::vector<std::complex<double>>(L_));
 
-  for (int i = 0; i < B_; ++i) {
-    for (int j = 0; j < L_; ++j) {
-      modulated_signal[i][j] = constellation[integers[i * L_ + j]];
+  for (int i = 0; i < L_; ++i) {
+    for (int j = 0; j < B_; ++j) {
+      modulated_signal[j][i] = constellation[integers[i * B_ + j]];
     }
   }
 
   return modulated_signal;
-}
-
-std::vector<std::complex<double>> Ofdm::flattenVector(
-    const std::vector<std::vector<std::complex<double>>>& input) {
-  std::vector<std::complex<double>> flattened_vector;
-  int rows = input.size();
-  int cols = input[0].size();
-
-  for (int i = 0; i < rows; ++i) {
-    for (int j = 0; j < cols; ++j) {
-      flattened_vector.push_back(input[i][j]);
-    }
-  }
-
-  return flattened_vector;
 }
 
 std::vector<int> Ofdm::convertBits(int value, int num_bits) {
@@ -117,6 +105,22 @@ std::vector<int> Ofdm::convertIntToBits(const std::vector<int>& integers,
   }
 
   return bits;
+}
+
+std::vector<std::vector<double>> Ofdm::transpose2DVector(
+    const std::vector<std::vector<double>>& input) {
+  int rows = input.size();
+  int cols = input[0].size();
+
+  std::vector<std::vector<double>> transposed(cols, std::vector<double>(rows));
+
+  for (int i = 0; i < rows; ++i) {
+    for (int j = 0; j < cols; ++j) {
+      transposed[j][i] = input[i][j];
+    }
+  }
+
+  return transposed;
 }
 
 std::vector<std::vector<std::complex<double>>> Ofdm::transpose2DComplexVector(
@@ -182,6 +186,25 @@ std::vector<std::vector<std::complex<double>>> Ofdm::columnMajorReshape(
   return reshaped;
 }
 
+int Ofdm::symbolErrorCount(const std::vector<int>& vector1, const std::vector<int>& vector2) {
+    // Check if the vectors have the same size; if not, return -1 to indicate an error.
+    if (vector1.size() != vector2.size()) {
+        return -1;
+    }
+
+    int errorCount = 0;
+
+    // Iterate through the elements of both vectors and compare them.
+    for (size_t i = 0; i < vector1.size(); ++i) {
+        if (vector1[i] != vector2[i]) {
+            // If elements are different, increment the error count.
+            errorCount++;
+        }
+    }
+
+    return errorCount;
+}
+
 std::vector<std::vector<std::complex<double>>> Ofdm::fft(
     const std::vector<std::vector<std::complex<double>>>& input) {
   /*
@@ -226,42 +249,43 @@ std::vector<std::vector<std::complex<double>>> Ofdm::fft(
   return output;
 }
 
-std::vector<std::complex<double>> Ofdm::fft(const std::vector<std::complex<double>>& input, int n) {
-    // Validate input size
-    if (n <= 0) {
-        throw std::invalid_argument("Output size n must be positive");
-    }
+std::vector<std::complex<double>> Ofdm::fft(
+    const std::vector<std::complex<double>>& input, int n) {
+  // Validate input size
+  if (n <= 0) {
+    throw std::invalid_argument("Output size n must be positive");
+  }
 
-    int input_size = input.size();
-    
-    // Prepare result vector
-    std::vector<std::complex<double>> result(n);
+  int input_size = input.size();
 
-    // Create a plan for the forward FFT
-    fftw_plan plan_forward = fftw_plan_dft_1d(n, reinterpret_cast<fftw_complex*>(const_cast<std::complex<double>*>(result.data())),
-                                              reinterpret_cast<fftw_complex*>(const_cast<std::complex<double>*>(result.data())), FFTW_FORWARD, FFTW_ESTIMATE);
+  // Prepare result vector
+  std::vector<std::complex<double>> result(n);
 
-    // Copy input, pad with zeros or truncate as needed
-    if (input_size < n) {
-        std::copy(input.begin(), input.end(), result.begin());
-        std::fill(result.begin() + input_size, result.end(), std::complex<double>(0.0, 0.0));
-    } else {
-        std::copy(input.begin(), input.begin() + n, result.begin());
-    }
+  // Create a plan for the forward FFT
+  fftw_plan plan_forward =
+      fftw_plan_dft_1d(n,
+                       reinterpret_cast<fftw_complex*>(
+                           const_cast<std::complex<double>*>(result.data())),
+                       reinterpret_cast<fftw_complex*>(
+                           const_cast<std::complex<double>*>(result.data())),
+                       FFTW_FORWARD, FFTW_ESTIMATE);
 
-    // Perform the forward FFT
-    fftw_execute(plan_forward);
+  // Copy input, pad with zeros or truncate as needed
+  if (input_size < n) {
+    std::copy(input.begin(), input.end(), result.begin());
+    std::fill(result.begin() + input_size, result.end(),
+              std::complex<double>(0.0, 0.0));
+  } else {
+    std::copy(input.begin(), input.begin() + n, result.begin());
+  }
 
-    // Normalize the result
-    double scale = 1.0 / static_cast<double>(n);
-    for (int i = 0; i < n; ++i) {
-        result[i] *= scale;
-    }
+  // Perform the forward FFT
+  fftw_execute(plan_forward);
 
-    // Clean up the plan
-    fftw_destroy_plan(plan_forward);
+  // Clean up the plan
+  fftw_destroy_plan(plan_forward);
 
-    return result;
+  return result;
 }
 
 std::vector<std::vector<std::complex<double>>> Ofdm::ifft(
@@ -382,4 +406,80 @@ std::vector<std::complex<double>> Ofdm::filter(
   }
 
   return result;
+}
+
+std::vector<std::vector<int>> Ofdm::decode(
+    std::vector<std::vector<std::complex<double>>>& received,
+    std::vector<std::complex<double>> channel_response,
+    const std::string& constl_type) {
+  /**
+   *  @brief  Decode the input B x L matrix of received symbols
+   *
+   *  @param  received A BxL matrix of received symbols
+   *  @param  channel_response channel impulse response
+   *  @param  constl_type a string indicating constellation type
+   *
+   *  @result returns a 2d vector of decoded symbols
+   */
+
+  std::vector<std::vector<int>> dec_sym;
+
+  std::vector<std::complex<double>> constellation =
+      constellations_[constl_type];
+
+  for (std::vector<std::complex<double>> rec_symbol : received) {
+    std::vector<std::vector<double>> det;
+    for (int i = 0; i < constellation.size(); i++) {
+      std::vector<double> det_ind;
+      for (int j = 0; j < channel_response.size(); j++) {
+        det_ind.push_back(squareEuclideanDistance(
+            complexDivision(rec_symbol[j], channel_response[j]),
+            constellation[i]));
+      }
+      det.push_back(det_ind);
+    }
+    std::vector<std::vector<double>> det_transpose = transpose2DVector(det);
+    dec_sym.push_back(findMinInd(det_transpose));
+  }
+
+  return dec_sym;
+}
+
+double Ofdm::squareEuclideanDistance(const std::complex<double>& a,
+                                     const std::complex<double>& b) {
+  double realDiff = std::real(a) - std::real(b);
+  double imagDiff = std::imag(a) - std::imag(b);
+  return realDiff * realDiff + imagDiff * imagDiff;
+}
+
+std::complex<double> Ofdm::complexDivision(const std::complex<double>& a,
+                                           const std::complex<double>& b) {
+  double denominator = b.real() * b.real() + b.imag() * b.imag();
+  std::complex<double> result = a * std::conj(b) / denominator;
+  return result;
+}
+
+std::vector<int> Ofdm::findMinInd(const std::vector<std::vector<double>>& matrix) {
+    std::vector<int> minIndices;
+    
+    for (const auto& row : matrix) {
+        if (row.empty()) {
+            // Handle empty row, return -1 or some other sentinel value
+            minIndices.push_back(-1);
+        } else {
+            double minVal = row[0];
+            int minIndex = 0;
+
+            for (int i = 1; i < row.size(); ++i) {
+                if (row[i] < minVal) {
+                    minVal = row[i];
+                    minIndex = i;
+                }
+            }
+
+            minIndices.push_back(minIndex);
+        }
+    }
+    
+    return minIndices;
 }

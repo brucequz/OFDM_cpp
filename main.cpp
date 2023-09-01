@@ -23,6 +23,7 @@ void output2DComplexVector(
     const std::vector<std::vector<std::complex<double>>>& vec2D);
 std::vector<std::complex<double>> normalize(
     const std::vector<std::complex<double>>& input);
+std::vector<int> readVectorFromMATFile(const std::string& filePath, const std::string& variableName);
 std::vector<std::vector<std::complex<double>>> readComplexMatFile(
     const std::string& filename);
 
@@ -74,8 +75,12 @@ int main() {
       double rho = SNR[i];
       outputFile << "For SNR = " << rho << ": " << std::endl;
       int biterr_cnt = 0;
+      int symerr_cnt = 0;
       for (int mc_loop = 0; mc_loop < mc_N; mc_loop++) {
         std::vector<int> data_int = ofdm.generateRandomInt(mod);
+
+        // std::string filename = "../dat_ind.mat";
+        // data_int = readVectorFromMATFile(filename, "dat_ind_reshape");
         outputFile << "Outputing integer vector" << std::endl;
         output1DVector(outputFile, data_int);
 
@@ -86,7 +91,9 @@ int main() {
         std::vector<std::vector<std::complex<double>>> data_sym =
             ofdm.generateModulatedSignal(data_int, mod);
         std::vector<std::complex<double>> data_flattened =
-            ofdm.flattenVector(data_sym);
+            ofdm.columnMajorFlatten(data_sym);
+        outputFile << "Outputing modulated signal vector" << std::endl;
+        output1DComplexVector(outputFile, data_flattened);   
 
         // IFFT
         std::vector<std::vector<std::complex<double>>> data_ifft =
@@ -103,7 +110,7 @@ int main() {
         // Reshape the BxN matrix to obtain the frame (1xTotal_length)
         // Total_length = (CP_length+L)*B
         std::vector<std::complex<double>> data_tx =
-            ofdm.flattenVector(ofdm.transpose2DComplexVector(data_cp));
+            ofdm.columnMajorFlatten(ofdm.transpose2DComplexVector(data_cp));
 
         // Define the channel response
         // deterministic frequency-selective channel
@@ -140,12 +147,28 @@ int main() {
         // FFT
         std::vector<std::vector<std::complex<double>>> rec_f =
             ofdm.fft(rec_sans_cp);
+         outputFile << "Outputing fft result" << std::endl;
+        output2DComplexVector(outputFile, rec_f);
         
         // channel FFT
         std::vector<std::complex<double>> H_f = ofdm.fft(normalize(h), config["L"]);
+
+        // Decoding
+        std::vector<std::vector<int>> dec_sym = ofdm.decode(rec_f, H_f, mod);
+        outputFile << "Outputing decoding result" << std::endl;
+        for (auto& row : dec_sym) {
+          output1DVector(outputFile, row);
+        }
+
+        // Compare and count error
+        std::vector<int> recsym_flatten = ofdm.columnMajorFlatten(dec_sym);
+        outputFile << "Outputing flattened decoding result" << std::endl;
+        output1DVector(outputFile, recsym_flatten);
         
-        break;
+        symerr_cnt += ofdm.symbolErrorCount(data_int, recsym_flatten);
       }
+      std::cout << "Error after 5000 iterations: " << symerr_cnt << std::endl;
+
       break;
     }
     break;
@@ -163,7 +186,7 @@ int main() {
   std::vector<std::vector<std::complex<double>>> result = ofdm.ifft(input);
   printComplexVector2D(result);
 
-  // FFT Test
+  // MATLAB DATA API Test
   std::string filename = "../rec.mat";
   std::vector<std::vector<std::complex<double>>> complexData =
       readComplexMatFile(filename);
@@ -178,7 +201,7 @@ int main() {
   std::cout << "Remove cp size: " << rec_sans_cp.size() << " x "
             << rec_sans_cp[0].size() << std::endl;
 
-  // FFT
+  // FFT Test
   std::vector<std::vector<std::complex<double>>> rec_f = ofdm.fft(rec_sans_cp);
   outputFile << "Outputing fft result" << std::endl;
   output2DComplexVector(outputFile, rec_f);
@@ -259,6 +282,50 @@ std::vector<std::complex<double>> normalize(
   }
 
   return normalized_vector;
+}
+
+std::vector<int> readVectorFromMATFile(const std::string& filePath, const std::string& variableName) {
+    std::vector<int> dataVector;
+
+    // Load the MATLAB file
+    MATFile* matFile = matOpen(filePath.c_str(), "r");
+
+    if (matFile == nullptr) {
+        std::cerr << "Error: Could not open MATLAB file." << std::endl;
+        return dataVector;
+    }
+
+    // Read the 1D vector from the MATLAB file
+    mxArray* matlabData = matGetVariable(matFile, variableName.c_str());
+
+    if (matlabData == nullptr) {
+        std::cerr << "Error: Could not read data from MATLAB file." << std::endl;
+        mxDestroyArray(matlabData);
+        matClose(matFile);
+        return dataVector;
+    }
+
+    if (!mxIsDouble(matlabData) || mxGetNumberOfDimensions(matlabData) > 2) {
+        std::cerr << "Error: Invalid data format in MATLAB file." << std::endl;
+        mxDestroyArray(matlabData);
+        matClose(matFile);
+        return dataVector;
+    }
+
+    double* data = mxGetPr(matlabData);
+    int dataSize = static_cast<int>(mxGetNumberOfElements(matlabData));
+
+    // Convert MATLAB data to a C++ vector of ints
+    dataVector.reserve(dataSize);
+    for (int i = 0; i < dataSize; ++i) {
+        dataVector.push_back(static_cast<int>(data[i]) - 1);
+    }
+
+    // Clean up
+    mxDestroyArray(matlabData);
+    matClose(matFile);
+
+    return dataVector;
 }
 
 std::vector<std::vector<std::complex<double>>> readComplexMatFile(
