@@ -9,8 +9,8 @@ Constellation::Constellation() {};
  
 std::vector<std::complex<double>> Constellation::bpsk() {
   std::vector<std::complex<double>> constl;
-  constl.push_back(std::complex<double>(1.0, 0.0));   // symbol 0
-  constl.push_back(std::complex<double>(-1.0, 0.0));  // symbol 1
+  constl.push_back(std::complex<double>(-1.0, 0.0));   // symbol 0
+  constl.push_back(std::complex<double>(1.0, 0.0));  // symbol 1
   return constl;
 }
 

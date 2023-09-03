@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-Ofdm::Ofdm(const std::map<std::string, int>& config) {
+Ofdm::Ofdm(const std::map<std::string, int>& config) : generator(12345) {
   auto it = config.find("B");
   B_ = (it != config.end()) ? it->second : 10;
 
@@ -27,9 +27,6 @@ Ofdm::Ofdm(const std::map<std::string, int>& config) {
   constellations_["bpsk"] = constl_->bpsk();
   constellations_["qpsk"] = constl_->qpsk();
   constellations_["qam16"] = constl_->qam(16);
-
-  // Random number generator
-  std::srand(static_cast<unsigned>(std::time(nullptr)));
 }
 
 Ofdm::~Ofdm() {
@@ -369,14 +366,14 @@ std::vector<std::vector<std::complex<double>>> Ofdm::removeCyclicPrefix(
 std::vector<std::complex<double>> Ofdm::addAWGN(
     const std::vector<std::complex<double>>& signal) {
   std::default_random_engine generator;
-  std::normal_distribution<double> distribution(0.0, std::sqrt(0.5 / L_));
+  std::normal_distribution<double> distribution(0.0, 1.0);
 
   std::vector<std::complex<double>> noisy_signal;
   noisy_signal.reserve(signal.size());
 
   for (const std::complex<double>& value : signal) {
-    double noise_real = distribution(generator);
-    double noise_imag = distribution(generator);
+    double noise_real = distribution(generator) * std::sqrt(0.5 / L_);
+    double noise_imag = distribution(generator) * std::sqrt(0.5 / L_);
 
     std::complex<double> noisy_value(value.real() + noise_real,
                                      value.imag() + noise_imag);
@@ -384,6 +381,25 @@ std::vector<std::complex<double>> Ofdm::addAWGN(
   }
 
   return noisy_signal;
+}
+
+std::vector<std::complex<double>> Ofdm::generateNoise(
+      const double& mean, const double& stddev, size_t size) {
+  
+  std::normal_distribution<double> distribution(mean, stddev);
+
+  std::vector<std::complex<double>> noise;
+  noise.reserve(size);
+
+  for (int i = 0; i < size; i++) {
+    double noise_real = distribution(generator);
+    double noise_imag = distribution(generator);
+
+    std::complex<double> noise_value(noise_real, noise_imag);
+    noise.push_back(noise_value);
+  }
+
+  return noise;
 }
 
 std::vector<std::complex<double>> Ofdm::filter(
@@ -482,4 +498,42 @@ std::vector<int> Ofdm::findMinInd(const std::vector<std::vector<double>>& matrix
     }
     
     return minIndices;
+}
+
+std::complex<double> Ofdm::calculateMean(const std::vector<std::complex<double>>& input) {
+    if (input.empty()) {
+        // Handle the case of an empty vector
+        return std::complex<double>(0.0, 0.0);
+    }
+
+    std::complex<double> sum(0.0, 0.0);
+
+    for (const std::complex<double>& element : input) {
+        sum += element;
+    }
+
+    return sum / static_cast<double>(input.size());
+}
+
+std::complex<double> Ofdm::calculateStandardDeviation(const std::vector<std::complex<double>>& input) {
+    if (input.empty()) {
+        // Handle the case of an empty vector
+        return std::complex<double>(0.0, 0.0);
+    }
+
+    // Step 1: Calculate the mean
+    std::complex<double> mean = calculateMean(input);
+
+    // Step 2: Calculate the squared differences
+    std::complex<double> squaredDifferencesSum(0.0, 0.0);
+    for (const std::complex<double>& element : input) {
+        std::complex<double> diff = element - mean;
+        squaredDifferencesSum += std::norm(diff); // Square and sum real and imaginary parts
+    }
+
+    // Step 3: Calculate the mean of squared differences
+    double meanSquaredDifferences = std::abs(squaredDifferencesSum) / static_cast<double>(input.size());
+
+    // Step 4: Take the square root to get the standard deviation
+    return std::sqrt(meanSquaredDifferences);
 }
