@@ -39,10 +39,6 @@ int main() {
     std::cerr << "Failed to open the file for writing." << std::endl;
     return 1;
   }
-  // complex number
-  const std::complex<double> i(0.0, 1.0);
-  std::cout << i.imag() << std::endl;
-  std::cout << 5 * i.imag() << std::endl;
 
   // OFDM
   std::map<std::string, int> config;
