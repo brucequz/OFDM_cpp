@@ -23,10 +23,13 @@ void output2DComplexVector(
     const std::vector<std::vector<std::complex<double>>>& vec2D);
 std::vector<std::complex<double>> normalize(
     const std::vector<std::complex<double>>& input);
-std::vector<int> readVectorFromMATFile(const std::string& filePath, const std::string& variableName);
+std::vector<int> readVectorFromMATFile(const std::string& filePath,
+                                       const std::string& variableName);
 std::vector<std::vector<std::complex<double>>> readComplexMatFile(
     const std::string& filename, const std::string& variableName);
-std::vector<std::complex<double>> addComplexVectors(const std::vector<std::complex<double>>& vector1, const std::vector<std::complex<double>>& vector2);
+std::vector<std::complex<double>> addComplexVectors(
+    const std::vector<std::complex<double>>& vector1,
+    const std::vector<std::complex<double>>& vector2);
 
 int main() {
   // output path
@@ -60,7 +63,7 @@ int main() {
   double SNR_dB_step = 2.0;
   std::vector<double> SNR_dB = {};
   std::vector<double> SNR = {};
-  for (double i = SNR_dB_start; i < SNR_dB_end; i += SNR_dB_step) {
+  for (double i = SNR_dB_start; i <= SNR_dB_end; i += SNR_dB_step) {
     SNR_dB.push_back(i);
     SNR.push_back(pow(10.0, i / 10.0));
   }
@@ -68,13 +71,12 @@ int main() {
   // Error Vector
   std::vector<double> Pe(SNR.size(), 0);
 
-  // Noise matrix, for debug purpose
-  std::vector<std::vector<std::complex<double>>> noise_record = readComplexMatFile("../noise_record.mat", "noise_record");
-
   // Modulation Schemes
   std::vector<std::string> modulation_schemes = {"bpsk", "qpsk", "qam16"};
 
   for (const std::string& mod : modulation_schemes) {
+    outputFile << "For modulation: " << mod << ": --------------------------------------"
+               << std::endl;
     for (int i = 0; i < SNR.size(); i++) {
       double rho = SNR[i];
       outputFile << "For SNR = " << rho << ": " << std::endl;
@@ -97,7 +99,7 @@ int main() {
         std::vector<std::complex<double>> data_flattened =
             ofdm.columnMajorFlatten(data_sym);
         // outputFile << "Outputing modulated signal vector" << std::endl;
-        // output1DComplexVector(outputFile, data_flattened);   
+        // output1DComplexVector(outputFile, data_flattened);
 
         // IFFT
         std::vector<std::vector<std::complex<double>>> data_ifft =
@@ -139,32 +141,12 @@ int main() {
         // outputFile << "Outputing received symbols (no noise)" << std::endl;
         // output1DComplexVector(outputFile, rec);
 
-        // Add Noise
-        // std::vector<std::complex<double>> received = ofdm.addAWGN(rec);
-
-
-        // std::cout << "For C++ generated Noise: " << std::endl;
-        // std::cout << "Mean: " << ofdm.calculateMean(noise) << std::endl;
-        // std::cout << "Standard deviation" << ofdm.calculateStandardDeviation(noise) << std::endl;
-
-        // std::cout << "For MATLAB generated Noise: " << std::endl;
-        // std::cout << "Mean: " << ofdm.calculateMean(noise_record[mc_loop]) << std::endl;
-        // std::cout << "Standard deviation" << ofdm.calculateStandardDeviation(noise_record[mc_loop]) << std::endl;
-
         // Generate Random Noise
-        std::vector<std::complex<double>> noise = ofdm.generateNoise(0.0, std::sqrt(0.5 / config["L"]), rec.size());
+        std::vector<std::complex<double>> noise =
+            ofdm.generateNoise(0.0, std::sqrt(0.5 / config["L"]), rec.size());
 
-        std::vector<std::complex<double>> received = addComplexVectors(rec, noise_record[mc_loop]);
-
-        // filename = "../noise.mat";
-        // std::vector<std::vector<std::complex<double>>> noise = readComplexMatFile(filename, "noise");
-
-        // std::vector<std::complex<double>> received;
-        // for (int i = 0; i < noise[0].size(); i++) {
-        //   received.push_back(rec[i] + noise[0][i]);
-        // }
-        // outputFile << "Outputing received symbols (with noise)" << std::endl;
-        // output1DComplexVector(outputFile, received);
+        std::vector<std::complex<double>> received =
+            addComplexVectors(rec, noise);
 
         // remove cyclic prefix
         std::vector<std::vector<std::complex<double>>> rec_sans_cp =
@@ -175,9 +157,13 @@ int main() {
             ofdm.fft(rec_sans_cp);
         //  outputFile << "Outputing fft result" << std::endl;
         // output2DComplexVector(outputFile, rec_f);
-        
+
         // channel FFT
-        std::vector<std::complex<double>> H_f = ofdm.fft(normalize(h), config["L"]);
+        std::vector<std::complex<double>> H_f =
+            ofdm.fft(normalize(h), config["L"]);
+        for (auto& val : H_f) {
+          val *= std::sqrt(rho);
+        }
 
         // Decoding
         std::vector<std::vector<int>> dec_sym = ofdm.decode(rec_f, H_f, mod);
@@ -190,18 +176,23 @@ int main() {
         std::vector<int> recsym_flatten = ofdm.columnMajorFlatten(dec_sym);
         // outputFile << "Outputing flattened decoding result" << std::endl;
         // output1DVector(outputFile, recsym_flatten);
-        
+
+        // Bit Error Calculation
+        std::vector<int> rec_bits = ofdm.convertIntToBits(recsym_flatten, mod);
+
         symerr_cnt += ofdm.symbolErrorCount(data_int, recsym_flatten);
-        outputFile << "In iteration " << mc_loop << ": , there are " << ofdm.symbolErrorCount(data_int, recsym_flatten) << " errors" << std::endl;
-        
+        biterr_cnt += ofdm.symbolErrorCount(data_bits, rec_bits);
+        // outputFile << "In iteration " << mc_loop << ": , there are " <<
+        // ofdm.symbolErrorCount(data_int, recsym_flatten) << " errors" <<
+        // std::endl;
       }
-      std::cout << "Error after 5000 iterations: " << symerr_cnt << std::endl;
-
-      break;
+      outputFile << "Symbol error after 5000 iterations: " << symerr_cnt
+                 << std::endl;
+      outputFile << "Bit error after 5000 iterations: " << biterr_cnt
+                 << std::endl;
     }
-    break;
   }
-
+  /*
   // IFFT Test
   std::vector<std::vector<std::complex<double>>> input;
   std::vector<std::complex<double>> row_1 = {};
@@ -233,6 +224,7 @@ int main() {
   std::vector<std::vector<std::complex<double>>> rec_f = ofdm.fft(rec_sans_cp);
   outputFile << "Outputing fft result" << std::endl;
   output2DComplexVector(outputFile, rec_f);
+  */
 
   outputFile.close();
   return 0;
@@ -312,48 +304,49 @@ std::vector<std::complex<double>> normalize(
   return normalized_vector;
 }
 
-std::vector<int> readVectorFromMATFile(const std::string& filePath, const std::string& variableName) {
-    std::vector<int> dataVector;
+std::vector<int> readVectorFromMATFile(const std::string& filePath,
+                                       const std::string& variableName) {
+  std::vector<int> dataVector;
 
-    // Load the MATLAB file
-    MATFile* matFile = matOpen(filePath.c_str(), "r");
+  // Load the MATLAB file
+  MATFile* matFile = matOpen(filePath.c_str(), "r");
 
-    if (matFile == nullptr) {
-        std::cerr << "Error: Could not open MATLAB file." << std::endl;
-        return dataVector;
-    }
+  if (matFile == nullptr) {
+    std::cerr << "Error: Could not open MATLAB file." << std::endl;
+    return dataVector;
+  }
 
-    // Read the 1D vector from the MATLAB file
-    mxArray* matlabData = matGetVariable(matFile, variableName.c_str());
+  // Read the 1D vector from the MATLAB file
+  mxArray* matlabData = matGetVariable(matFile, variableName.c_str());
 
-    if (matlabData == nullptr) {
-        std::cerr << "Error: Could not read data from MATLAB file." << std::endl;
-        mxDestroyArray(matlabData);
-        matClose(matFile);
-        return dataVector;
-    }
-
-    if (!mxIsDouble(matlabData) || mxGetNumberOfDimensions(matlabData) > 2) {
-        std::cerr << "Error: Invalid data format in MATLAB file." << std::endl;
-        mxDestroyArray(matlabData);
-        matClose(matFile);
-        return dataVector;
-    }
-
-    double* data = mxGetPr(matlabData);
-    int dataSize = static_cast<int>(mxGetNumberOfElements(matlabData));
-
-    // Convert MATLAB data to a C++ vector of ints
-    dataVector.reserve(dataSize);
-    for (int i = 0; i < dataSize; ++i) {
-        dataVector.push_back(static_cast<int>(data[i]) - 1);
-    }
-
-    // Clean up
+  if (matlabData == nullptr) {
+    std::cerr << "Error: Could not read data from MATLAB file." << std::endl;
     mxDestroyArray(matlabData);
     matClose(matFile);
-
     return dataVector;
+  }
+
+  if (!mxIsDouble(matlabData) || mxGetNumberOfDimensions(matlabData) > 2) {
+    std::cerr << "Error: Invalid data format in MATLAB file." << std::endl;
+    mxDestroyArray(matlabData);
+    matClose(matFile);
+    return dataVector;
+  }
+
+  double* data = mxGetPr(matlabData);
+  int dataSize = static_cast<int>(mxGetNumberOfElements(matlabData));
+
+  // Convert MATLAB data to a C++ vector of ints
+  dataVector.reserve(dataSize);
+  for (int i = 0; i < dataSize; ++i) {
+    dataVector.push_back(static_cast<int>(data[i]) - 1);
+  }
+
+  // Clean up
+  mxDestroyArray(matlabData);
+  matClose(matFile);
+
+  return dataVector;
 }
 
 std::vector<std::vector<std::complex<double>>> readComplexMatFile(
@@ -396,18 +389,20 @@ std::vector<std::vector<std::complex<double>>> readComplexMatFile(
   return complexVector2D;
 }
 
-std::vector<std::complex<double>> addComplexVectors(const std::vector<std::complex<double>>& vector1, const std::vector<std::complex<double>>& vector2) {
-    // Ensure both input vectors have the same size
-    if (vector1.size() != vector2.size()) {
-        throw std::invalid_argument("Vector sizes must match for addition.");
-    }
+std::vector<std::complex<double>> addComplexVectors(
+    const std::vector<std::complex<double>>& vector1,
+    const std::vector<std::complex<double>>& vector2) {
+  // Ensure both input vectors have the same size
+  if (vector1.size() != vector2.size()) {
+    throw std::invalid_argument("Vector sizes must match for addition.");
+  }
 
-    std::vector<std::complex<double>> result;
-    result.reserve(vector1.size());
+  std::vector<std::complex<double>> result;
+  result.reserve(vector1.size());
 
-    for (size_t i = 0; i < vector1.size(); ++i) {
-        result.push_back(vector1[i] + vector2[i]);
-    }
+  for (size_t i = 0; i < vector1.size(); ++i) {
+    result.push_back(vector1[i] + vector2[i]);
+  }
 
-    return result;
+  return result;
 }

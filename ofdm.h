@@ -4,8 +4,8 @@
 #include <fftw3.h>
 
 #include <map>
-#include <string>
 #include <random>
+#include <string>
 #include <unordered_map>
 
 #include "constellation.h"
@@ -48,7 +48,7 @@ class Ofdm {
 
     return result;
   }
-  
+
   template <typename T>
   inline std::vector<T> rowMajorFlatten(
       const std::vector<std::vector<T>>& input) {
@@ -85,8 +85,10 @@ class Ofdm {
   int symbolErrorCount(const std::vector<int>& vector1,
                        const std::vector<int>& vector2);
 
-  std::complex<double> calculateMean(const std::vector<std::complex<double>>& input);
-  std::complex<double> calculateStandardDeviation(const std::vector<std::complex<double>>& input);
+  std::complex<double> calculateMean(
+      const std::vector<std::complex<double>>& input);
+  std::complex<double> calculateStandardDeviation(
+      const std::vector<std::complex<double>>& input);
 
   // FFT and IFFT
   std::vector<std::vector<std::complex<double>>> fft(
@@ -108,9 +110,10 @@ class Ofdm {
   // AWGN Noise
   std::vector<std::complex<double>> addAWGN(
       const std::vector<std::complex<double>>& signal);
-    
-  std::vector<std::complex<double>> generateNoise(
-      const double& mean, const double& stddev, size_t size);
+
+  std::vector<std::complex<double>> generateNoise(const double& mean,
+                                                  const double& stddev,
+                                                  size_t size);
 
   // Filter
   std::vector<std::complex<double>> filter(
@@ -126,11 +129,11 @@ class Ofdm {
  private:
   Constellation* constl_;
   std::unordered_map<std::string, std::vector<std::complex<double>>>
-      constellations_;  // modulation schemes
-  int B_;               // number of OFDM symbols per transmitted frame
-  int L_;               // number of subcarriers in each OFDM symbol
-  int CP_length_;       // cyclic prefix length
-  int Nh_;              // channel order
+      constellations_;     // modulation schemes
+  int B_;                  // number of OFDM symbols per transmitted frame
+  int L_;                  // number of subcarriers in each OFDM symbol
+  int CP_length_;          // cyclic prefix length
+  int Nh_;                 // channel order
   std::mt19937 generator;  // random number generator
   std::vector<int> convertBits(int value, int num_bits);
   double squareEuclideanDistance(const std::complex<double>& a,
@@ -138,7 +141,6 @@ class Ofdm {
   std::complex<double> complexDivision(const std::complex<double>& a,
                                        const std::complex<double>& b);
   std::vector<int> findMinInd(const std::vector<std::vector<double>>& matrix);
-
 
   // You can also add private member functions here
 };

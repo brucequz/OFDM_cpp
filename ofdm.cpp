@@ -25,8 +25,17 @@ Ofdm::Ofdm(const std::map<std::string, int>& config) : generator(12345) {
   // constellation
   constl_ = new Constellation();
   constellations_["bpsk"] = constl_->bpsk();
+  std::cout << "Average Bit Energy for bpsk: "
+            << constl_->calculateAverageBitEnergy(constellations_["bpsk"])
+            << std::endl;
   constellations_["qpsk"] = constl_->qpsk();
+  std::cout << "Average Bit Energy for qpsk: "
+            << constl_->calculateAverageBitEnergy(constellations_["qpsk"])
+            << std::endl;
   constellations_["qam16"] = constl_->qam(16);
+  std::cout << "Average Bit Energy for 16qam: "
+            << constl_->calculateAverageBitEnergy(constellations_["qam16"])
+            << std::endl;
 }
 
 Ofdm::~Ofdm() {
@@ -183,23 +192,25 @@ std::vector<std::vector<std::complex<double>>> Ofdm::columnMajorReshape(
   return reshaped;
 }
 
-int Ofdm::symbolErrorCount(const std::vector<int>& vector1, const std::vector<int>& vector2) {
-    // Check if the vectors have the same size; if not, return -1 to indicate an error.
-    if (vector1.size() != vector2.size()) {
-        return -1;
+int Ofdm::symbolErrorCount(const std::vector<int>& vector1,
+                           const std::vector<int>& vector2) {
+  // Check if the vectors have the same size; if not, return -1 to indicate an
+  // error.
+  if (vector1.size() != vector2.size()) {
+    return -1;
+  }
+
+  int errorCount = 0;
+
+  // Iterate through the elements of both vectors and compare them.
+  for (size_t i = 0; i < vector1.size(); ++i) {
+    if (vector1[i] != vector2[i]) {
+      // If elements are different, increment the error count.
+      errorCount++;
     }
+  }
 
-    int errorCount = 0;
-
-    // Iterate through the elements of both vectors and compare them.
-    for (size_t i = 0; i < vector1.size(); ++i) {
-        if (vector1[i] != vector2[i]) {
-            // If elements are different, increment the error count.
-            errorCount++;
-        }
-    }
-
-    return errorCount;
+  return errorCount;
 }
 
 std::vector<std::vector<std::complex<double>>> Ofdm::fft(
@@ -383,9 +394,9 @@ std::vector<std::complex<double>> Ofdm::addAWGN(
   return noisy_signal;
 }
 
-std::vector<std::complex<double>> Ofdm::generateNoise(
-      const double& mean, const double& stddev, size_t size) {
-  
+std::vector<std::complex<double>> Ofdm::generateNoise(const double& mean,
+                                                      const double& stddev,
+                                                      size_t size) {
   std::normal_distribution<double> distribution(mean, stddev);
 
   std::vector<std::complex<double>> noise;
@@ -475,65 +486,70 @@ std::complex<double> Ofdm::complexDivision(const std::complex<double>& a,
   return result;
 }
 
-std::vector<int> Ofdm::findMinInd(const std::vector<std::vector<double>>& matrix) {
-    std::vector<int> minIndices;
-    
-    for (const auto& row : matrix) {
-        if (row.empty()) {
-            // Handle empty row, return -1 or some other sentinel value
-            minIndices.push_back(-1);
-        } else {
-            double minVal = row[0];
-            int minIndex = 0;
+std::vector<int> Ofdm::findMinInd(
+    const std::vector<std::vector<double>>& matrix) {
+  std::vector<int> minIndices;
 
-            for (int i = 1; i < row.size(); ++i) {
-                if (row[i] < minVal) {
-                    minVal = row[i];
-                    minIndex = i;
-                }
-            }
+  for (const auto& row : matrix) {
+    if (row.empty()) {
+      // Handle empty row, return -1 or some other sentinel value
+      minIndices.push_back(-1);
+    } else {
+      double minVal = row[0];
+      int minIndex = 0;
 
-            minIndices.push_back(minIndex);
+      for (int i = 1; i < row.size(); ++i) {
+        if (row[i] < minVal) {
+          minVal = row[i];
+          minIndex = i;
         }
+      }
+
+      minIndices.push_back(minIndex);
     }
-    
-    return minIndices;
+  }
+
+  return minIndices;
 }
 
-std::complex<double> Ofdm::calculateMean(const std::vector<std::complex<double>>& input) {
-    if (input.empty()) {
-        // Handle the case of an empty vector
-        return std::complex<double>(0.0, 0.0);
-    }
+std::complex<double> Ofdm::calculateMean(
+    const std::vector<std::complex<double>>& input) {
+  if (input.empty()) {
+    // Handle the case of an empty vector
+    return std::complex<double>(0.0, 0.0);
+  }
 
-    std::complex<double> sum(0.0, 0.0);
+  std::complex<double> sum(0.0, 0.0);
 
-    for (const std::complex<double>& element : input) {
-        sum += element;
-    }
+  for (const std::complex<double>& element : input) {
+    sum += element;
+  }
 
-    return sum / static_cast<double>(input.size());
+  return sum / static_cast<double>(input.size());
 }
 
-std::complex<double> Ofdm::calculateStandardDeviation(const std::vector<std::complex<double>>& input) {
-    if (input.empty()) {
-        // Handle the case of an empty vector
-        return std::complex<double>(0.0, 0.0);
-    }
+std::complex<double> Ofdm::calculateStandardDeviation(
+    const std::vector<std::complex<double>>& input) {
+  if (input.empty()) {
+    // Handle the case of an empty vector
+    return std::complex<double>(0.0, 0.0);
+  }
 
-    // Step 1: Calculate the mean
-    std::complex<double> mean = calculateMean(input);
+  // Step 1: Calculate the mean
+  std::complex<double> mean = calculateMean(input);
 
-    // Step 2: Calculate the squared differences
-    std::complex<double> squaredDifferencesSum(0.0, 0.0);
-    for (const std::complex<double>& element : input) {
-        std::complex<double> diff = element - mean;
-        squaredDifferencesSum += std::norm(diff); // Square and sum real and imaginary parts
-    }
+  // Step 2: Calculate the squared differences
+  std::complex<double> squaredDifferencesSum(0.0, 0.0);
+  for (const std::complex<double>& element : input) {
+    std::complex<double> diff = element - mean;
+    squaredDifferencesSum +=
+        std::norm(diff);  // Square and sum real and imaginary parts
+  }
 
-    // Step 3: Calculate the mean of squared differences
-    double meanSquaredDifferences = std::abs(squaredDifferencesSum) / static_cast<double>(input.size());
+  // Step 3: Calculate the mean of squared differences
+  double meanSquaredDifferences =
+      std::abs(squaredDifferencesSum) / static_cast<double>(input.size());
 
-    // Step 4: Take the square root to get the standard deviation
-    return std::sqrt(meanSquaredDifferences);
+  // Step 4: Take the square root to get the standard deviation
+  return std::sqrt(meanSquaredDifferences);
 }

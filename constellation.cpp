@@ -5,21 +5,21 @@
 #include <iostream>
 #include <vector>
 
-Constellation::Constellation() {};
- 
+Constellation::Constellation(){};
+
 std::vector<std::complex<double>> Constellation::bpsk() {
   std::vector<std::complex<double>> constl;
-  constl.push_back(std::complex<double>(-1.0, 0.0));   // symbol 0
-  constl.push_back(std::complex<double>(1.0, 0.0));  // symbol 1
+  constl.push_back(std::complex<double>(-1.0, 0.0));  // symbol 0
+  constl.push_back(std::complex<double>(1.0, 0.0));   // symbol 1
   return constl;
 }
 
 std::vector<std::complex<double>> Constellation::qpsk() {
   std::vector<std::complex<double>> constl;
-  constl.push_back(std::complex<double>(1.0, 0.0));    // symbol 00
-  constl.push_back(std::complex<double>(0.0, 1.0));   // symbol 01
-  constl.push_back(std::complex<double>(0.0, -1.0));   // symbol 10
-  constl.push_back(std::complex<double>(-1.0, 0.0));  // symbol 11
+  constl.push_back(std::complex<double>(1.0, 1.0));    // symbol 00
+  constl.push_back(std::complex<double>(1.0, -1.0));   // symbol 01
+  constl.push_back(std::complex<double>(-1.0, 1.0));   // symbol 10
+  constl.push_back(std::complex<double>(-1.0, -1.0));  // symbol 11
   return constl;
 }
 
@@ -31,14 +31,50 @@ std::vector<std::complex<double>> Constellation::qam(int levels) {
 
   std::vector<std::complex<double>> constl;
   int sqrtLevels = static_cast<int>(std::sqrt(levels));
-  double stepSize = 2.0 / (sqrtLevels - 1);
+  double stepSize = std::sqrt(8.0 / 5.0);
 
   for (int i = 0; i < sqrtLevels; ++i) {
     for (int j = 0; j < sqrtLevels; ++j) {
-      constl.push_back(
-          std::complex<double>(-1.0 + i * stepSize, -1.0 + j * stepSize));
+      constl.push_back(std::complex<double>(-1.5 * stepSize + i * stepSize,
+                                            -1.5 * stepSize + j * stepSize));
     }
   }
 
   return constl;
+}
+
+double Constellation::calculateAverageBitEnergy(
+    const std::vector<std::complex<double>>& constellation) {
+  // Get the number of symbols in the constellation
+  int numSymbols = static_cast<int>(constellation.size());
+
+  // Calculate the number of bits per symbol (log2)
+  int bitsPerSymbol = static_cast<int>(std::log2(numSymbols));
+
+  // Check if the number of symbols is not a power of 2
+  if (numSymbols <= 0 || (numSymbols & (numSymbols - 1)) != 0) {
+    std::cerr << "Error: Number of symbols should be a power of 2."
+              << std::endl;
+    return -1.0;  // Error
+  }
+
+  // Calculate the average symbol energy
+  double averageSymbolEnergy = 0.0;
+
+  for (const std::complex<double>& point : constellation) {
+    // Calculate the magnitude (amplitude) of the complex point
+    double magnitude = std::abs(point);
+
+    // Add the squared magnitude to the average symbol energy
+    averageSymbolEnergy += magnitude * magnitude;
+  }
+
+  // Normalize by dividing by the number of symbols
+  averageSymbolEnergy /= numSymbols;
+
+  // Calculate the average bit energy by dividing by the number of bits per
+  // symbol
+  double averageBitEnergy = averageSymbolEnergy / bitsPerSymbol;
+
+  return averageBitEnergy;
 }
