@@ -30,6 +30,7 @@ std::vector<std::vector<std::complex<double>>> readComplexMatFile(
 std::vector<std::complex<double>> addComplexVectors(
     const std::vector<std::complex<double>>& vector1,
     const std::vector<std::complex<double>>& vector2);
+void writeToMat(const std::vector<std::vector<double>>& data, const char* filePath, const char* varName);
 
 int main() {
   // output path
@@ -55,7 +56,7 @@ int main() {
   // ------------------------------- Execution Cycle
   // ----------------------------------- Symbol Error Rate for different
   // modulation
-  int mc_N = 500;  // maximum number of iterations to achieve sufficient errors
+  int mc_N = 5000;  // maximum number of iterations to achieve sufficient errors
 
   // SNR
   double SNR_dB_start = 0.0;
@@ -69,14 +70,21 @@ int main() {
   }
 
   // Error Vector
-  std::vector<double> Pe(SNR.size(), 0);
+  std::vector<std::vector<double>> Pe_symbol;
+  std::vector<std::vector<double>> Pe_bit;
 
   // Modulation Schemes
   std::vector<std::string> modulation_schemes = {"bpsk", "qpsk", "qam16"};
+  std::unordered_map<std::string, int> bitsPerSymbol;
+  bitsPerSymbol["bpsk"] = 1;
+  bitsPerSymbol["qpsk"] = 2;
+  bitsPerSymbol["qam16"] = 4;
 
   for (const std::string& mod : modulation_schemes) {
     outputFile << "For modulation: " << mod << ": --------------------------------------"
                << std::endl;
+    std::vector<double> Pe_sym_mod;
+    std::vector<double> Pe_bit_mod;
     for (int i = 0; i < SNR.size(); i++) {
       double rho = SNR[i];
       outputFile << "For SNR = " << rho << ": " << std::endl;
@@ -186,11 +194,18 @@ int main() {
         // ofdm.symbolErrorCount(data_int, recsym_flatten) << " errors" <<
         // std::endl;
       }
+      Pe_sym_mod.push_back(static_cast<double>(symerr_cnt) / static_cast<double>(mc_N * config["B"] * config["L"]));
+      Pe_bit_mod.push_back(static_cast<double>(biterr_cnt) / static_cast<double>(bitsPerSymbol[mod] * mc_N * config["B"] * config["L"]));
+      
       outputFile << "Symbol error after 5000 iterations: " << symerr_cnt
                  << std::endl;
       outputFile << "Bit error after 5000 iterations: " << biterr_cnt
                  << std::endl;
     }
+    Pe_symbol.push_back(Pe_sym_mod);
+    Pe_bit.push_back(Pe_bit_mod);
+    writeToMat(Pe_symbol, "../Pe_symbol.mat", "Pe_symbol");
+    writeToMat(Pe_bit, "../Pe_bit.mat", "Pe_bit");
   }
   /*
   // IFFT Test
@@ -405,4 +420,46 @@ std::vector<std::complex<double>> addComplexVectors(
   }
 
   return result;
+}
+
+void writeToMat(const std::vector<std::vector<double>>& data, const char* filePath, const char* varName) {
+  // Open MAT file for writing
+  MATFile* pmat = matOpen(filePath, "w");
+  if (pmat == NULL) {
+      std::cerr << "Error creating MAT file." << std::endl;
+      return;
+  }
+
+  // Get the number of rows and columns in the data
+  mwSize rows = static_cast<mwSize>(data.size());
+  mwSize cols = (rows > 0) ? static_cast<mwSize>(data[0].size()) : 0;
+
+  // Create a mxArray and populate it with data
+  mxArray* pmxArray = mxCreateDoubleMatrix(rows, cols, mxREAL);
+  if (pmxArray == NULL) {
+      std::cerr << "Error creating mxArray." << std::endl;
+      matClose(pmat);
+      return;
+  }
+
+  // Populate the mxArray with data
+  double* pr = mxGetPr(pmxArray);
+  for (mwIndex i = 0; i < rows; ++i) {
+      for (mwIndex j = 0; j < cols; ++j) {
+          pr[i + j * rows] = data[i][j];
+      }
+  }
+
+  // Write the mxArray to the MAT file with the specified variable name
+  int status = matPutVariable(pmat, varName, pmxArray);
+  if (status != 0) {
+      std::cerr << "Error writing mxArray to MAT file." << std::endl;
+      mxDestroyArray(pmxArray);
+      matClose(pmat);
+      return;
+  }
+
+  // Close MAT file and clean up resources
+  mxDestroyArray(pmxArray);
+  matClose(pmat);
 }
