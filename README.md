@@ -21,7 +21,7 @@ make &or& make --build .
 ./ofdm
 
 ### Debug Info
-The author of this project uses the built-in lldb debugger and AddressSanitizer. 
+The author of this project uses the macOS built-in lldb debugger and AddressSanitizer. 
 
 To start debugging, use 'lldb ofdm' after cmake. Use "b ${file_name} : ${line_number}" to set a breakpoint. After setting breakpoints, use "r" to run the debugger.
 
@@ -30,12 +30,15 @@ To start debugging, use 'lldb ofdm' after cmake. Use "b ${file_name} : ${line_nu
 * n: step over 
 * p ${var_name}: print variable
 * q: quit debugger
-### Important Note:
+### List of questions and thoughts
 
 1. MATLAB does column-major reshape operations, while C++ performs row-major operation. Be cautious!
 2. filter() in ofdm.cpp does convolution by brute force. Truncate the last $(CP_length_) elements to get the desired behavior.
 3. generateAWGN() now uses std::mt19937() random number generator. This is the key to ensure similar behavior with respect to MATLAB implementation. Using default rng would, for example, results in double symbol errors when running bpsk for 5000 iterations.
 4. Why would not multiplying channel impulse response (CIR) by sqrt(rho) significantly impact 16qam but not bpsk or qpsk?
+   
+   Interesting observation: compensating for both mag and phase of a rayleigh channel is the same as compensating for phase only.
+
 5. X-axis: Is it SNR or Eb/N0 when average bit energy is the same across different modulation schemes? what is the relationship between SNR and EbN0?
 6. What is the purpose of cyclic prefix? 
 
@@ -52,6 +55,12 @@ To start debugging, use 'lldb ofdm' after cmake. Use "b ${file_name} : ${line_nu
 
     Yes, having multiple pilot subcarriers that span the bandwidth in an OFDM (Orthogonal Frequency Division Multiplexing) system is indeed a common method to estimate the channel's frequency response. These pilot subcarriers serve as known reference points in the transmitted signal, allowing the receiver to estimate how the channel affects the signal at various frequencies within the bandwidth.
 
+9. Pilot symbols vs. Pilot subcarriers
+In the system that I am using right now, these two terms have different meanings. In a single iteration, 10 ofdm symbols with each symbol spread across 16 separate subcarriers are transmitted through a channel. Since these 
+
+10. #9 leads to this question. Does a block-fading model reflect the reality? 
+> In both cases, you need to interpolate the channel between the pilots you've got. Both cases are typically suboptimal, since they'd only work perfectly for (a) actual block-fading (which is a convenient model, but doesn't look like reality) or (b) for a channel that is perfectly interpolatable from just a few points of observation in frequency (but that would imply you have designed an OFDM system with too many subcarrier, and that has other downsides).
+>
 ```
 (10 x 16)
              *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * 
