@@ -22,6 +22,14 @@ Ofdm::Ofdm(const std::map<std::string, int>& config) : generator(12345) {
   it = config.find("Nh");
   Nh_ = (it != config.end()) ? it->second : 4;
 
+  // Pilot Config
+  it = config.find("Pilot");
+  pilot_type_ = (it != config.end()) ? it->second : 0;
+
+  if (pilot_type_ == 1) {
+    pilot_tx_ = generateBlockPilotSymbol(L_);
+  }
+
   // constellation
   constl_ = new Constellation();
   constellations_["bpsk"] = constl_->bpsk();
@@ -49,10 +57,18 @@ std::vector<int> Ofdm::generateRandomInt(const std::string& constl_type) {
   //       when they make the same number of errors
 
   std::vector<int> randomIntegers;
-
-  randomIntegers.reserve(B_ * L_);
-  for (int i = 0; i < B_ * L_; ++i) {
-    randomIntegers.push_back(std::rand() % constellations_[constl_type].size());
+  if (pilot_type_ == 0) {
+    randomIntegers.reserve(B_ * L_);
+    for (int i = 0; i < B_ * L_; ++i) {
+      randomIntegers.push_back(std::rand() %
+                               constellations_[constl_type].size());
+    }
+  } else if (pilot_type_ == 1) {
+    randomIntegers.reserve((B_ - 1) * L_);
+    for (int i = 0; i < (B_ - 1) * L_; ++i) {
+      randomIntegers.push_back(std::rand() %
+                               constellations_[constl_type].size());
+    }
   }
 
   return randomIntegers;
@@ -63,24 +79,40 @@ std::vector<std::vector<std::complex<double>>> Ofdm::generateModulatedSignal(
   std::vector<std::vector<std::complex<double>>> modulated_signal;
   std::vector<std::complex<double>> constellation =
       constellations_[constl_type];
-
-  int total_elements = B_ * L_;
-
-  if (integers.size() != total_elements) {
-    std::cout << "Cannot generate modulated signal. Input vector size does not "
-                 "match target size.\n";
-    return {};
-  }
-
-  modulated_signal.resize(B_, std::vector<std::complex<double>>(L_));
-
-  for (int i = 0; i < L_; ++i) {
-    for (int j = 0; j < B_; ++j) {
-      modulated_signal[j][i] = constellation[integers[i * B_ + j]];
+  
+  if (pilot_type_ == 0) {
+    int total_elements = B_ * L_;
+    if (integers.size() != total_elements) {
+      std::cout << "Cannot generate modulated signal. Input vector size does not "
+                  "match target size.\n";
+      return {};
     }
+    modulated_signal.resize(B_, std::vector<std::complex<double>>(L_));
+    for (int i = 0; i < L_; ++i) {
+      for (int j = 0; j < B_; ++j) {
+        modulated_signal[j][i] = constellation[integers[i * B_ + j]];
+      }
+    }
+    return modulated_signal;
+  } else if (pilot_type_ == 1) {
+    int total_elements = (B_ - 1) * L_;
+    if (integers.size() != total_elements) {
+      std::cout << "Cannot generate modulated signal. Input vector size does not "
+                  "match target size.\n";
+      return {};
+    }
+    modulated_signal.resize(B_, std::vector<std::complex<double>>(L_));
+    for (int i = 0; i < L_; ++i) {
+      modulated_signal[0][i] = pilot_tx_[i];
+    }
+    for (int i = 0; i < L_; ++i) {
+      for (int j = 1; j < B_; ++j) {
+        modulated_signal[j][i] = constellation[integers[i * (B_-1) + j - 1]];
+      }
+    }
+    return modulated_signal;
   }
-
-  return modulated_signal;
+  return {};
 }
 
 std::vector<int> Ofdm::convertBits(int value, int num_bits) {
@@ -436,6 +468,59 @@ std::vector<std::complex<double>> Ofdm::filter(
 }
 
 std::vector<std::vector<int>> Ofdm::decode(
+    std::vector<std::vector<std::complex<double>>> received,
+    std::vector<std::complex<double>> channel_response,
+    const std::string& constl_type, const std::string& compensation) {
+  
+  if (pilot_type_ == 1) {
+    // remove pilot symbol before decoding
+    received.erase(received.begin());
+  }
+
+  if (compensation == "zero") {
+    return decodeNoCompensation(received, constl_type);
+  } else if (compensation == "full") {
+    return decodeFullCompensation(received, channel_response, constl_type);     
+  }
+  
+  return decodeNoCompensation(received, constl_type);
+}
+
+std::vector<std::vector<int>> Ofdm::decodeNoCompensation(
+    std::vector<std::vector<std::complex<double>>>& received,
+    const std::string& constl_type) {
+  /**
+   *  @brief  Decode the input B x L matrix of received symbols
+   *
+   *  @param  received A BxL matrix of received symbols
+   *  @param  constl_type a string indicating constellation type
+   *
+   *  @result returns a 2d vector of decoded symbols
+   */
+
+  std::vector<std::vector<int>> dec_sym;
+
+  std::vector<std::complex<double>> constellation =
+      constellations_[constl_type];
+  
+  for (std::vector<std::complex<double>> rec_symbol : received) {
+    std::vector<std::vector<double>> det;
+    for (int i = 0; i < constellation.size(); i++) {
+      std::vector<double> det_ind;
+      for (int j = 0; j < rec_symbol.size(); j++) {
+        det_ind.push_back(
+            squareEuclideanDistance(rec_symbol[j], constellation[i]));
+      }
+      det.push_back(det_ind);
+    }
+    std::vector<std::vector<double>> det_transpose = transpose2DVector(det);
+    dec_sym.push_back(findMinInd(det_transpose));
+  }
+
+  return dec_sym;
+}
+
+std::vector<std::vector<int>> Ofdm::decodeFullCompensation(
     std::vector<std::vector<std::complex<double>>>& received,
     std::vector<std::complex<double>> channel_response,
     const std::string& constl_type) {
@@ -470,6 +555,34 @@ std::vector<std::vector<int>> Ofdm::decode(
   }
 
   return dec_sym;
+}
+
+std::vector<std::complex<double>> Ofdm::generateBlockPilotSymbol(
+    const int& pilot_length) {
+  // Define the known pilot symbols for 16-QAM (4 possible symbols)
+  std::vector<std::complex<double>> pilotSymbols = {
+      {1.0, 1.0}, {-1.0, 1.0}, {1.0, -1.0}, {-1.0, -1.0}};
+
+  // Create a block pilot symbol by repeating the known symbols for each
+  // subcarrier
+  std::vector<std::complex<double>> blockPilotSymbol;
+  for (int i = 0; i < pilot_length; ++i) {
+    blockPilotSymbol.push_back(pilotSymbols[i % 4]);
+  }
+
+  return blockPilotSymbol;
+}
+
+std::vector<std::complex<double>> Ofdm::estimateChannelML(const std::vector<std::complex<double>> pilot_rx) {
+  /*
+  Returns a estimation of the Channel impulse response (CIR).
+
+  */
+  std::vector<std::complex<double>> h_hat;
+  for (int i = 0; i < pilot_rx.size(); ++i) {
+    h_hat.push_back(complexDivision(pilot_rx[i], pilot_tx_[i]));
+  }
+  return h_hat;
 }
 
 double Ofdm::squareEuclideanDistance(const std::complex<double>& a,

@@ -122,9 +122,21 @@ class Ofdm {
 
   // Decoding
   std::vector<std::vector<int>> decode(
+      std::vector<std::vector<std::complex<double>>> received,
+      std::vector<std::complex<double>> channel_response,
+      const std::string& constl_type,
+      const std::string& compensation);
+  std::vector<std::vector<int>> decodeNoCompensation(
+      std::vector<std::vector<std::complex<double>>>& received,
+      const std::string& constl_type);
+  std::vector<std::vector<int>> decodeFullCompensation(
       std::vector<std::vector<std::complex<double>>>& received,
       std::vector<std::complex<double>> channel_response,
       const std::string& constl_type);
+  
+  // Channel Estimation
+  std::vector<std::complex<double>> generateBlockPilotSymbol(const int& pilot_length);
+  std::vector<std::complex<double>> estimateChannelML(const std::vector<std::complex<double>> pilot_rx);
 
  private:
   Constellation* constl_;
@@ -134,6 +146,8 @@ class Ofdm {
   int L_;                  // number of subcarriers in each OFDM symbol
   int CP_length_;          // cyclic prefix length
   int Nh_;                 // channel order
+  int pilot_type_;         // pilot configuration
+  std::vector<std::complex<double>> pilot_tx_;
   std::mt19937 generator;  // random number generator
   std::vector<int> convertBits(int value, int num_bits);
   double squareEuclideanDistance(const std::complex<double>& a,

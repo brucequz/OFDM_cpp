@@ -31,6 +31,7 @@ std::vector<std::complex<double>> addComplexVectors(
     const std::vector<std::complex<double>>& vector1,
     const std::vector<std::complex<double>>& vector2);
 void writeToMat(const std::vector<std::vector<double>>& data, const char* filePath, const char* varName);
+std::vector<std::complex<double>> generateRayleighChannel(int numTaps, double standardDeviation);
 
 int main() {
   // output path
@@ -46,6 +47,7 @@ int main() {
   config["L"] = 16;         // number of subcarriers per ofdm symbol
   config["CP_length"] = 4;  // cyclic prefix length
   config["Nh"] = 4;         // channel order
+  config["Pilot"] = 1;      // pilot config
 
   Ofdm ofdm(config);
 
@@ -123,18 +125,22 @@ int main() {
             ofdm.columnMajorFlatten(ofdm.transpose2DComplexVector(data_cp));
 
         // Define the channel response
-        // deterministic frequency-selective channel
-        std::complex<double> h1(3.0, 0.0);
-        std::complex<double> h2(-1.0 *
-                                std::exp(std::complex<double>(0.0, 0.13)));
-        std::complex<double> h3(1.0 *
-                                std::exp(std::complex<double>(0.0, -0.35)));
-        std::complex<double> h4(0.0, 0.0);
-        std::complex<double> h5(4.0 *
-                                std::exp(std::complex<double>(0.0, 1.03)));
+        // // deterministic frequency-selective channel
+        // std::complex<double> h1(3.0, 0.0);
+        // std::complex<double> h2(-1.0 *
+        //                         std::exp(std::complex<double>(0.0, 0.13)));
+        // std::complex<double> h3(1.0 *
+        //                         std::exp(std::complex<double>(0.0, -0.35)));
+        // std::complex<double> h4(0.0, 0.0);
+        // std::complex<double> h5(4.0 *
+        //                         std::exp(std::complex<double>(0.0, 1.03)));
 
-        // Create a vector of complex numbers
-        std::vector<std::complex<double>> h = {h1, h2, h3, h4, h5};
+        // // Create a vector of complex numbers
+        // std::vector<std::complex<double>> h = {h1, h2, h3, h4, h5};
+
+        // Rayleigh Fading Channel
+        std::vector<std::complex<double>> h = generateRayleighChannel(config["Nh"]+1, std::sqrt(0.5 / (config["Nh"]+1)));
+
         std::vector<std::complex<double>> h_normalized = normalize(h);
 
         std::vector<std::complex<double>> rec =
@@ -169,8 +175,12 @@ int main() {
           val *= std::sqrt(rho);
         }
 
+        // If the channel is not deterministic, replace H_f with a vector of ones or estimate
+        std::vector<std::complex<double>> H_hat = ofdm.estimateChannelML(rec_f[0]);
+        
         // Decoding
-        std::vector<std::vector<int>> dec_sym = ofdm.decode(rec_f, H_f, mod);
+        // std::vector<std::vector<int>> dec_sym = ofdm.decodeNoCompensation(rec_f, mod);
+        std::vector<std::vector<int>> dec_sym = ofdm.decode(rec_f, H_f, mod, "full");
         // outputFile << "Outputing decoding result" << std::endl;
         // for (auto& row : dec_sym) {
         //   output1DVector(outputFile, row);
@@ -190,8 +200,8 @@ int main() {
         // ofdm.symbolErrorCount(data_int, recsym_flatten) << " errors" <<
         // std::endl;
       }
-      Pe_sym_mod.push_back(static_cast<double>(symerr_cnt) / static_cast<double>(mc_N * config["B"] * config["L"]));
-      Pe_bit_mod.push_back(static_cast<double>(biterr_cnt) / static_cast<double>(bitsPerSymbol[mod] * mc_N * config["B"] * config["L"]));
+      Pe_sym_mod.push_back(static_cast<double>(symerr_cnt) / static_cast<double>(mc_N * (config["B"]-1) * config["L"]));
+      Pe_bit_mod.push_back(static_cast<double>(biterr_cnt) / static_cast<double>(bitsPerSymbol[mod] * mc_N * (config["B"]-1) * config["L"]));
       
       outputFile << "Symbol error after 5000 iterations: " << symerr_cnt
                  << std::endl;
@@ -200,8 +210,8 @@ int main() {
     }
     Pe_symbol.push_back(Pe_sym_mod);
     Pe_bit.push_back(Pe_bit_mod);
-    writeToMat(Pe_symbol, "../Pe_symbol.mat", "Pe_symbol");
-    writeToMat(Pe_bit, "../Pe_bit.mat", "Pe_bit");
+    writeToMat(Pe_symbol, "../rayleigh_Pesym_exact.mat", "Pe_symbol");
+    writeToMat(Pe_bit, "../rayleigh_Pebit_exact.mat", "Pe_bit");
   }
   /*
   // IFFT Test
@@ -458,4 +468,23 @@ void writeToMat(const std::vector<std::vector<double>>& data, const char* filePa
   // Close MAT file and clean up resources
   mxDestroyArray(pmxArray);
   matClose(pmat);
+}
+
+std::vector<std::complex<double>> generateRayleighChannel(int numTaps, double standardDeviation) {
+    std::vector<std::complex<double>> channel;
+    std::mt19937 generator(12345); // Initialize with seed 12345
+    std::normal_distribution<double> distribution(0.0, standardDeviation);
+
+    for (int i = 0; i < numTaps; ++i) {
+        // Generate real and imaginary parts following Gaussian distribution
+        double realPart = distribution(generator);
+        double imagPart = distribution(generator);
+
+        // Combine real and imaginary parts to create the complex coefficient
+        std::complex<double> coefficient(realPart, imagPart);
+
+        channel.push_back(coefficient);
+    }
+
+    return channel;
 }
