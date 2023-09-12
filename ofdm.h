@@ -3,6 +3,7 @@
 
 #include <fftw3.h>
 
+#include <Eigen/Dense>
 #include <map>
 #include <random>
 #include <string>
@@ -90,6 +91,10 @@ class Ofdm {
   std::complex<double> calculateStandardDeviation(
       const std::vector<std::complex<double>>& input);
 
+  double totalTxSymbols(const int& iterations);
+
+  double totalTxBits(const int& iterations, const std::string& mod);
+
   // FFT and IFFT
   std::vector<std::vector<std::complex<double>>> fft(
       const std::vector<std::vector<std::complex<double>>>& input);
@@ -124,8 +129,7 @@ class Ofdm {
   std::vector<std::vector<int>> decode(
       std::vector<std::vector<std::complex<double>>> received,
       std::vector<std::complex<double>> channel_response,
-      const std::string& constl_type,
-      const std::string& compensation);
+      const std::string& constl_type, const std::string& compensation);
   std::vector<std::vector<int>> decodeNoCompensation(
       std::vector<std::vector<std::complex<double>>>& received,
       const std::string& constl_type);
@@ -133,20 +137,25 @@ class Ofdm {
       std::vector<std::vector<std::complex<double>>>& received,
       std::vector<std::complex<double>> channel_response,
       const std::string& constl_type);
-  
-  // Channel Estimation
-  std::vector<std::complex<double>> generateBlockPilotSymbol(const int& pilot_length);
-  std::vector<std::complex<double>> estimateChannelML(const std::vector<std::complex<double>> pilot_rx);
 
+  // Channel Estimation
+  std::vector<std::complex<double>> generateBlockPilotSymbol(
+      const int& pilot_length);
+  std::vector<std::complex<double>> estimateChannelML(
+      const std::vector<std::complex<double>>& pilot_rx);
+  std::vector<std::complex<double>> estimateChannelLS(
+      const std::vector<std::complex<double>>& pilot_rx);
+  std::vector<std::complex<double>> estimateChannelMMSE(
+      const std::vector<std::complex<double>>& pilot_rx);
  private:
   Constellation* constl_;
   std::unordered_map<std::string, std::vector<std::complex<double>>>
-      constellations_;     // modulation schemes
-  int B_;                  // number of OFDM symbols per transmitted frame
-  int L_;                  // number of subcarriers in each OFDM symbol
-  int CP_length_;          // cyclic prefix length
-  int Nh_;                 // channel order
-  int pilot_type_;         // pilot configuration
+      constellations_;  // modulation schemes
+  int B_;               // number of OFDM symbols per transmitted frame
+  int L_;               // number of subcarriers in each OFDM symbol
+  int CP_length_;       // cyclic prefix length
+  int Nh_;              // channel order
+  int pilot_type_;      // pilot configuration
   std::vector<std::complex<double>> pilot_tx_;
   std::mt19937 generator;  // random number generator
   std::vector<int> convertBits(int value, int num_bits);

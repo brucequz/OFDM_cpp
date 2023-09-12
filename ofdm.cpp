@@ -3,6 +3,7 @@
 #include <cassert>
 #include <cmath>
 #include <complex>
+#include <Eigen/Dense>
 #include <iostream>
 #include <map>
 #include <random>
@@ -243,6 +244,25 @@ int Ofdm::symbolErrorCount(const std::vector<int>& vector1,
   }
 
   return errorCount;
+}
+
+double Ofdm::totalTxSymbols(const int& iterations) {
+  if (pilot_type_ == 0) {
+    return static_cast<double>(iterations * B_ * L_);
+  } else if (pilot_type_ == 1) {
+    return static_cast<double>(iterations * (B_-1) * L_);
+  }
+  return 0.0;
+}
+
+double Ofdm::totalTxBits(const int& iterations, const std::string& mod) {
+  if (pilot_type_ == 0) {
+    return static_cast<double>(log2(constellations_[mod].size()) * iterations * B_ * L_);
+  } else if (pilot_type_ == 1) {
+    return static_cast<double>(log2(constellations_[mod].size()) * iterations * (B_-1) * L_);
+  }
+
+  return 0.0;
 }
 
 std::vector<std::vector<std::complex<double>>> Ofdm::fft(
@@ -573,7 +593,8 @@ std::vector<std::complex<double>> Ofdm::generateBlockPilotSymbol(
   return blockPilotSymbol;
 }
 
-std::vector<std::complex<double>> Ofdm::estimateChannelML(const std::vector<std::complex<double>> pilot_rx) {
+std::vector<std::complex<double>> Ofdm::estimateChannelML(
+    const std::vector<std::complex<double>>& pilot_rx) {
   /*
   Returns a estimation of the Channel impulse response (CIR).
 
@@ -583,6 +604,78 @@ std::vector<std::complex<double>> Ofdm::estimateChannelML(const std::vector<std:
     h_hat.push_back(complexDivision(pilot_rx[i], pilot_tx_[i]));
   }
   return h_hat;
+}
+
+std::vector<std::complex<double>> Ofdm::estimateChannelLS(
+    const std::vector<std::complex<double>>& pilot_rx) {
+  /* Least squares estimation of channel frequency response H_hat
+  */
+  Eigen::VectorXcd h_hat_eigen;
+  // Convert std::vector to Eigen::complex vector
+  Eigen::VectorXcd diagonalVector = Eigen::Map<const Eigen::VectorXcd>(pilot_tx_.data(), pilot_tx_.size());
+  // diagonalize the Eigen::vector
+  Eigen::DiagonalMatrix<std::complex<double>, Eigen::Dynamic> diagonalMatrix(diagonalVector);
+  // Take the inverse 
+  Eigen::DiagonalMatrix<std::complex<double>, Eigen::Dynamic> inverseDiagonalMatrix = diagonalMatrix.inverse();
+
+  Eigen::VectorXcd eigenComplexVectorRx = Eigen::Map<const Eigen::VectorXcd>(pilot_rx.data(), pilot_rx.size());
+
+  // Multiply inverseDiagonalMatrix with pilot_rx_
+  h_hat_eigen = inverseDiagonalMatrix * eigenComplexVectorRx;
+
+  // Convert h_hat_eigen to a std::vector of 1D
+  std::vector<std::complex<double>> H_hat(h_hat_eigen.data(), h_hat_eigen.data() + h_hat_eigen.size());
+
+  return H_hat;
+}
+
+std::vector<std::complex<double>> Ofdm::estimateChannelMMSE(
+      const std::vector<std::complex<double>>& pilot_rx) {
+  /* Minimum Mean Squared Error estimation of channel frequency response H_hat
+  */
+  
+  // data read-in
+  std::vector<std::complex<double>> H; 
+  for (size_t i = 0; i < pilot_rx.size(); ++i) {
+    H.push_back(complexDivision(pilot_rx[i], pilot_tx_[i]));
+  }
+  std::vector<std::complex<double>> h_std = ifft({H})[0];
+
+  Eigen::VectorXcd h = Eigen::Map<const Eigen::VectorXcd>(h_std.data(), h_std.size());
+  Eigen::VectorXcd x = Eigen::Map<const Eigen::VectorXcd>(pilot_tx_.data(), pilot_tx_.size());
+  Eigen::DiagonalMatrix<std::complex<double>, Eigen::Dynamic, Eigen::Dynamic> X(x);
+  Eigen::DiagonalMatrix<std::complex<double>, Eigen::Dynamic, Eigen::Dynamic> X_H(x.conjugate());
+  Eigen::VectorXcd y = Eigen::Map<const Eigen::VectorXcd>(pilot_rx.data(), pilot_rx.size());
+  
+  // divide to get h
+  // Eigen::VectorXcd h = y.array() / x.array();
+  std::complex<double> h_mean = h.mean();
+
+  Eigen::MatrixXcd R_hh(h.size(), h.size());
+  for (int i = 0; i < h.size(); ++i) {
+      for (int j = 0; j < h.size(); ++j) {
+          R_hh(i, j) = (h[i] - h_mean) * std::conj(h[j] - h_mean);
+      }
+  }
+  
+  Eigen::MatrixXcd F(L_, L_);
+  for (int i = 0; i < L_; ++i) {
+    for (int j = 0; j < L_; ++j) {
+        std::complex<double> exponent(0.0, -2.0*M_PI*i*j/static_cast<double>(L_));
+        F(i, j) = 1/static_cast<double>(L_) * std::exp(exponent);
+    }
+  }
+  Eigen::Matrix<std::complex<double>, Eigen::Dynamic, Eigen::Dynamic> F_H = F.adjoint();
+
+  Eigen::MatrixXcd R_hY = R_hh * F_H * X_H;
+
+  Eigen::MatrixXcd R_YY(h.size(), h.size());
+  R_YY = X * F * R_hh * F_H * X_H + 0.5/L_ * Eigen::MatrixXd::Identity(x.size(), x.size());
+
+  Eigen::VectorXcd H_est =  F * R_hY * R_YY.inverse() * y;
+
+  std::vector<std::complex<double>> H_est_vector(H_est.data(), H_est.data() + H_est.size());
+  return H_est_vector;
 }
 
 double Ofdm::squareEuclideanDistance(const std::complex<double>& a,

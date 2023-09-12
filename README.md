@@ -1,5 +1,12 @@
-# OFDM_cpp
-Description: A personal project intended to investigate BER performance of vanilla OFDM system and the effect of error correction coding.
+# A simplified OFDM implementation in C++
+Scope of investigation:
+
+* Modulation Schemes: BPSK, QPSK, and 16QAM
+* Pilot-based Channel Estimation Techniques:
+  * Least Squares(LS)
+  * Minimum Mean Squared Error(MMSE)
+  * Linear Minimum Mean Square Error(LMMSE)
+
 
 ## Getting Started
 ### How to set up?
@@ -8,6 +15,7 @@ The author of this project uses C++(14) and MATLAB(R_2022b). Addtional package m
 
 1. fftw3: Fast Fourier Transform library
 2. MATLAB Data API
+3. Eigen C++: A library for linear algebra
 
 ### Cmake commands
 mkdir build
@@ -40,6 +48,7 @@ To start debugging, use 'lldb ofdm' after cmake. Use "b ${file_name} : ${line_nu
    Interesting observation: compensating for both mag and phase of a rayleigh channel is the same as compensating for phase only.
 
 5. X-axis: Is it SNR or Eb/N0 when average bit energy is the same across different modulation schemes? what is the relationship between SNR and EbN0?
+
 6. What is the purpose of cyclic prefix? 
 
    Purpose of cyclic prefix: we have managed to restrict the inter-symbol interference to only symbols in the same block and eliminated the effect of inter-block interference. Adding cyclic prefix is essentially a circular convolution between input x and channel impulse response (CIR) h.
@@ -56,11 +65,20 @@ To start debugging, use 'lldb ofdm' after cmake. Use "b ${file_name} : ${line_nu
     Yes, having multiple pilot subcarriers that span the bandwidth in an OFDM (Orthogonal Frequency Division Multiplexing) system is indeed a common method to estimate the channel's frequency response. These pilot subcarriers serve as known reference points in the transmitted signal, allowing the receiver to estimate how the channel affects the signal at various frequencies within the bandwidth.
 
 9. Pilot symbols vs. Pilot subcarriers
-In the system that I am using right now, these two terms have different meanings. In a single iteration, 10 ofdm symbols with each symbol spread across 16 separate subcarriers are transmitted through a channel. Since these 
+
+    In the system that I am using right now, these two terms have different meanings. In a single iteration, 10 ofdm symbols with each symbol spread across 16 separate subcarriers are transmitted through a channel. Pilot symbol corresponds to block-type pilot implementation, while pilot subcarriers (inserting pilot tones) are used in comb-type pilot implementation.
 
 10. #9 leads to this question. Does a block-fading model reflect the reality? 
 > In both cases, you need to interpolate the channel between the pilots you've got. Both cases are typically suboptimal, since they'd only work perfectly for (a) actual block-fading (which is a convenient model, but doesn't look like reality) or (b) for a channel that is perfectly interpolatable from just a few points of observation in frequency (but that would imply you have designed an OFDM system with too many subcarrier, and that has other downsides).
->
+
+11. Inadequate Understanding of LS and LMS results in stagnate progress.
+> Least Squares (LS): LS is a deterministic approach that aims to find the estimate that minimizes the sum of squared errors between the estimated values and the observed data points. It does not assume randomness in the underlying estimated value.
+Minimum Mean Square Error (MMSE): MMSE, on the other hand, assumes that the underlying estimated value is a random variable. It seeks to minimize the expected value of the mean square error (MSE) between the estimated value and the true value, considering the statistical properties of the random variables involved.
+
+12. (Sep.12) Feels like I am already inside a rabbit hole (channel estimation). Still quite confused about ML estimation vs. LS estimation vs. MMSE estiamtion
+
+13. Carrier Frequency Offset and compensation? 
+> CFO estimation is the process of determining the frequency offset between the transmitter's carrier frequency and the receiver's local oscillator.
 ```
 (10 x 16)
              *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * 
@@ -79,3 +97,17 @@ In the system that I am using right now, these two terms have different meanings
                       |
                       one subcarrier
 ```
+
+### Note
+class link: https://nptel.ac.in/courses/117104118
+
+Estimation techniques in wireless communication channels
+
+* Least Squares
+  When using a single block-type pilot symbol, LS method is the same as dividing the received pilot symbol $Y(k)$ by the transmitted pilot symbol $X(k)$
+
+  $\hat{H}_{es,LS} = X^{-1}Y$ 
+* Minimum Mean Squared Error (Least Mean Squre)
+
+
+* Linear Minimum Mean Squared Error

@@ -177,6 +177,8 @@ int main() {
 
         // If the channel is not deterministic, replace H_f with a vector of ones or estimate
         std::vector<std::complex<double>> H_hat = ofdm.estimateChannelML(rec_f[0]);
+        std::vector<std::complex<double>> H_hat_LS = ofdm.estimateChannelLS(rec_f[0]);
+        std::vector<std::complex<double>> H_hat_MMSE = ofdm.estimateChannelMMSE(rec_f[0]);
         
         // Decoding
         // std::vector<std::vector<int>> dec_sym = ofdm.decodeNoCompensation(rec_f, mod);
@@ -200,8 +202,8 @@ int main() {
         // ofdm.symbolErrorCount(data_int, recsym_flatten) << " errors" <<
         // std::endl;
       }
-      Pe_sym_mod.push_back(static_cast<double>(symerr_cnt) / static_cast<double>(mc_N * (config["B"]-1) * config["L"]));
-      Pe_bit_mod.push_back(static_cast<double>(biterr_cnt) / static_cast<double>(bitsPerSymbol[mod] * mc_N * (config["B"]-1) * config["L"]));
+      Pe_sym_mod.push_back(static_cast<double>(symerr_cnt) / ofdm.totalTxSymbols(mc_N));
+      Pe_bit_mod.push_back(static_cast<double>(biterr_cnt) / ofdm.totalTxBits(mc_N, mod));
       
       outputFile << "Symbol error after 5000 iterations: " << symerr_cnt
                  << std::endl;
@@ -472,7 +474,7 @@ void writeToMat(const std::vector<std::vector<double>>& data, const char* filePa
 
 std::vector<std::complex<double>> generateRayleighChannel(int numTaps, double standardDeviation) {
     std::vector<std::complex<double>> channel;
-    std::mt19937 generator(12345); // Initialize with seed 12345
+    std::mt19937 generator(12345);
     std::normal_distribution<double> distribution(0.0, standardDeviation);
 
     for (int i = 0; i < numTaps; ++i) {
