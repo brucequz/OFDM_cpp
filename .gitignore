@@ -1,6 +1,6 @@
 *.dSYM
 *.out
-*.txt
+/output/output.txt
 .vscode
 .DS_Store
 *.mat

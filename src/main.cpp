@@ -35,7 +35,7 @@ std::vector<std::complex<double>> generateRayleighChannel(int numTaps, double st
 
 int main() {
   // output path
-  std::ofstream outputFile("output.txt");
+  std::ofstream outputFile("../output/output.txt");
   if (!outputFile.is_open()) {
     std::cerr << "Failed to open the file for writing." << std::endl;
     return 1;

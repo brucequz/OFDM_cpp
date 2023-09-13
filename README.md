@@ -18,16 +18,17 @@ The author of this project uses C++(14) and MATLAB(R_2022b). Addtional package m
 3. Eigen C++: A library for linear algebra
 
 ### Cmake commands
-mkdir build
+```
+$ mkdir build
 
-cd build
+$ cd build
 
-cmake ../
+$ cmake ../
 
-make &or& make --build .
+$ make
 
-./ofdm
-
+$ ./ofdm
+```
 ### Debug Info
 The author of this project uses the macOS built-in lldb debugger and AddressSanitizer. 
 
