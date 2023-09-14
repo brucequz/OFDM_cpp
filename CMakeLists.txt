@@ -10,9 +10,9 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 project(OFDM)
 
 # Append the -g flag to the compiler options
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address")
-# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2")
 
 # Add the library we want to build
 # add_library(ofdm SHARED constellation.cpp ofdm.cpp)
@@ -29,8 +29,8 @@ add_executable(ofdm ${SOURCES})
 
 # Specify that we need to link against our created library
 target_link_libraries(ofdm PRIVATE  ${CMAKE_SOURCE_DIR}/lib/libfftw3.dylib)
-target_link_libraries(ofdm PRIVATE  ${CMAKE_SOURCE_DIR}/lib/libmat.dylib)
-target_link_libraries(ofdm PRIVATE  ${CMAKE_SOURCE_DIR}/lib/libmx.dylib)
+target_link_libraries(ofdm PRIVATE  /Applications/MATLAB_R2022b.app/bin/maci64/libmat.dylib)
+target_link_libraries(ofdm PRIVATE  /Applications/MATLAB_R2022b.app/bin/maci64/libmx.dylib)
 # target_link_libraries(main PRIVATE ofdm)
 
 

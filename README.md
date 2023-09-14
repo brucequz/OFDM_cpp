@@ -39,6 +39,9 @@ To start debugging, use 'lldb ofdm' after cmake. Use "b ${file_name} : ${line_nu
 * n: step over 
 * p ${var_name}: print variable
 * q: quit debugger
+
+### Google Test
+Currently, Google Test is being used to test class functionalities inside the ErrorCorrection Folder. To run existing tests, go to ```test``` folder and run ```./test.sh``` to start the tests. You can also add more unit tests to the tests.cpp file.
 ### List of questions and thoughts
 
 1. MATLAB does column-major reshape operations, while C++ performs row-major operation. Be cautious!
@@ -101,6 +104,7 @@ Minimum Mean Square Error (MMSE): MMSE, on the other hand, assumes that the unde
 
 ### Note
 class link: https://nptel.ac.in/courses/117104118
+NXP documentation: https://www.nxp.com/docs/en/application-note/AN3059.pdf
 
 Estimation techniques in wireless communication channels
 

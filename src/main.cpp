@@ -1,4 +1,4 @@
-#include <mat.h>
+#include "mat.h"
 
 #include <cassert>
 #include <cmath>
@@ -35,7 +35,8 @@ std::vector<std::complex<double>> generateRayleighChannel(int numTaps, double st
 
 int main() {
   // output path
-  std::ofstream outputFile("../output/output.txt");
+  std::string outputFilePath = "../output/";
+  std::ofstream outputFile(outputFilePath + "output.txt");
   if (!outputFile.is_open()) {
     std::cerr << "Failed to open the file for writing." << std::endl;
     return 1;
@@ -139,7 +140,7 @@ int main() {
         // std::vector<std::complex<double>> h = {h1, h2, h3, h4, h5};
 
         // Rayleigh Fading Channel
-        std::vector<std::complex<double>> h = generateRayleighChannel(config["Nh"]+1, std::sqrt(0.5 / (config["Nh"]+1)));
+        std::vector<std::complex<double>> h = generateRayleighChannel(config["Nh"]+1, std::sqrt(0.5 / (config["Nh"] + 1)));
 
         std::vector<std::complex<double>> h_normalized = normalize(h);
 
@@ -178,11 +179,12 @@ int main() {
         // If the channel is not deterministic, replace H_f with a vector of ones or estimate
         std::vector<std::complex<double>> H_hat = ofdm.estimateChannelML(rec_f[0]);
         std::vector<std::complex<double>> H_hat_LS = ofdm.estimateChannelLS(rec_f[0]);
+        std::vector<std::complex<double>> H_hat_MMSE_1D = ofdm.estimateChannel1DMMSE(rec_f[0]);
         std::vector<std::complex<double>> H_hat_MMSE = ofdm.estimateChannelMMSE(rec_f[0]);
         
         // Decoding
         // std::vector<std::vector<int>> dec_sym = ofdm.decodeNoCompensation(rec_f, mod);
-        std::vector<std::vector<int>> dec_sym = ofdm.decode(rec_f, H_f, mod, "full");
+        std::vector<std::vector<int>> dec_sym = ofdm.decode(rec_f, H_hat_MMSE_1D, mod, "full");
         // outputFile << "Outputing decoding result" << std::endl;
         // for (auto& row : dec_sym) {
         //   output1DVector(outputFile, row);
@@ -212,8 +214,9 @@ int main() {
     }
     Pe_symbol.push_back(Pe_sym_mod);
     Pe_bit.push_back(Pe_bit_mod);
-    writeToMat(Pe_symbol, "../rayleigh_Pesym_exact.mat", "Pe_symbol");
-    writeToMat(Pe_bit, "../rayleigh_Pebit_exact.mat", "Pe_bit");
+
+    writeToMat(Pe_symbol, "../output/rayleigh_Pesym_MMSE.mat", "Pe_symbol");
+    writeToMat(Pe_bit, "../output/rayleigh_Pebit_MMSE.mat", "Pe_bit");
   }
   /*
   // IFFT Test
@@ -474,7 +477,7 @@ void writeToMat(const std::vector<std::vector<double>>& data, const char* filePa
 
 std::vector<std::complex<double>> generateRayleighChannel(int numTaps, double standardDeviation) {
     std::vector<std::complex<double>> channel;
-    std::mt19937 generator(12345);
+    std::mt19937 generator(74);
     std::normal_distribution<double> distribution(0.0, standardDeviation);
 
     for (int i = 0; i < numTaps; ++i) {

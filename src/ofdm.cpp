@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 
-Ofdm::Ofdm(const std::map<std::string, int>& config) : generator(12345) {
+Ofdm::Ofdm(const std::map<std::string, int>& config) : generator(74) {
   auto it = config.find("B");
   B_ = (it != config.end()) ? it->second : 10;
 
@@ -629,6 +629,21 @@ std::vector<std::complex<double>> Ofdm::estimateChannelLS(
   return H_hat;
 }
 
+std::vector<std::complex<double>> Ofdm::estimateChannel1DMMSE(
+      const std::vector<std::complex<double>>& pilot_rx) {
+  
+  Eigen::VectorXcd x = Eigen::Map<const Eigen::VectorXcd>(pilot_tx_.data(), pilot_tx_.size());
+  Eigen::VectorXcd y = Eigen::Map<const Eigen::VectorXcd>(pilot_rx.data(), pilot_rx.size());
+  std::vector<std::complex<double>> H_hat;
+  for (size_t i = 0; i < x.size(); ++i) {
+    std::complex<double> R_yx = x(i) * y(i);
+    std::complex<double> R_xx = x(i) * x(i);
+    H_hat.push_back(complexDivision(R_yx, (R_xx + std::complex<double>(0.5/L_, 0))));
+  }
+
+  return H_hat;
+}
+
 std::vector<std::complex<double>> Ofdm::estimateChannelMMSE(
       const std::vector<std::complex<double>>& pilot_rx) {
   /* Minimum Mean Squared Error estimation of channel frequency response H_hat
@@ -668,6 +683,19 @@ std::vector<std::complex<double>> Ofdm::estimateChannelMMSE(
   Eigen::Matrix<std::complex<double>, Eigen::Dynamic, Eigen::Dynamic> F_H = F.adjoint();
 
   Eigen::MatrixXcd R_hY = R_hh * F_H * X_H;
+
+  Eigen::MatrixXcd R_HH = F * R_hh;
+  // Eigen::DiagonalMatrix<std::complex<double>, Eigen::Dynamic> A(X.rows());
+  // for (int i = 0; i < X.rows(); ++i) {
+  //     A.diagonal()[i] = X.diagonal()[i] * X_H.diagonal()[i];
+  // }
+  // Eigen::MatrixXcd B = (0.5 / L_) * A.inverse();
+  // Eigen::MatrixXcd C = (R_HH + B).inverse();
+  // Eigen::VectorXcd H_est =  R_HH * C * h;
+
+  // std::vector<std::complex<double>> H_est_vector(H_est.data(), H_est.data() + H_est.size());
+  // return H_est_vector;
+
 
   Eigen::MatrixXcd R_YY(h.size(), h.size());
   R_YY = X * F * R_hh * F_H * X_H + 0.5/L_ * Eigen::MatrixXd::Identity(x.size(), x.size());

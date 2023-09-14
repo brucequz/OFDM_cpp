@@ -144,6 +144,8 @@ class Ofdm {
       const std::vector<std::complex<double>>& pilot_rx);
   std::vector<std::complex<double>> estimateChannelLS(
       const std::vector<std::complex<double>>& pilot_rx);
+  std::vector<std::complex<double>> estimateChannel1DMMSE(
+      const std::vector<std::complex<double>>& pilot_rx);
   std::vector<std::complex<double>> estimateChannelMMSE(
       const std::vector<std::complex<double>>& pilot_rx);
  private:
