@@ -11,6 +11,7 @@
 
 #include "constellation.h"
 #include "ofdm.h"
+#include "ErrorCorrection/hammingCode.h"
 
 void print1DVector(const std::vector<int>& vec);
 void output1DVector(std::ofstream& outputFile, const std::vector<int>& vec);

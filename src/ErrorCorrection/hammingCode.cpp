@@ -36,17 +36,18 @@ Eigen::VectorXi HammingCode::encodeHammingCode(const Eigen::VectorXi& data) {
 // Function to decode received Hamming code
 Eigen::VectorXi HammingCode::decodeHammingCode(Eigen::VectorXi received) {
   Eigen::VectorXi syndrome = parityCheckMatrix * received;
+  for (int i = 0; i < syndrome.size(); ++i) {
+    syndrome[i] %= 2;
+  }
   Eigen::VectorXi decodedMessage;
+  // std::cout << "syndrome is: " << syndrome << std::endl;
+  // std::cout << "syndrome is zero: " << syndrome.isZero() << std::endl;
 
   // Check for errors (non-zero syndrome)
   if (syndrome.isZero()) {
       // Extract the original message bits (first 4 bits of the received codeword)
       decodedMessage = received.head(4);
   } else {
-      for (int i = 0; i < syndrome.size(); ++i) {
-          syndrome[i] %= 2;
-      }
-      std::cout << "syndrome is: " << syndrome << std::endl;
       // Error correction: Find the bit position of the error and correct it
       int errorPosition = 0;
       for (int i = 0; i < 7; ++i) {
@@ -55,21 +56,21 @@ Eigen::VectorXi HammingCode::decodeHammingCode(Eigen::VectorXi received) {
               break;
           }
       }
-      std::cout << "error position: " << errorPosition << std::endl;
+      // std::cout << "error position: " << errorPosition << std::endl;
 
       if (errorPosition >= 0) {
 
           // Correct the error by flipping the corresponding bit
-          std:: cout << "original received: " << received.transpose() << std::endl;
+          // std:: cout << "original received: " << received.transpose() << std::endl;
           received(errorPosition) ^= 1;
-          std:: cout << "corrected received: " << received.transpose() << std::endl;
+          // std:: cout << "corrected received: " << received.transpose() << std::endl;
 
           // Extract the corrected message bits (first 4 bits of the received codeword)
           decodedMessage = received.head(4);
       } else {
-          std::cout << "Error position not found. Unable to correct." << std::endl;
+          // std::cout << "Error position not found. Unable to correct." << std::endl;
       }
   }
-  std::cout << "decoded again: " << decodedMessage.transpose() << std::endl;
+  // std::cout << "decoded again: " << decodedMessage.transpose() << std::endl;
   return decodedMessage;
 }
