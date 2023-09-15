@@ -19,8 +19,13 @@ public:
 
 private:
     // Private members and functions for internal use
+    int k_;  // number of input bits
+    int n_;  // number of output bits
+    int m_;  // number of memory elements
+    
     int constraintLength_;
     std::vector<int> generatorPolynomials_;
+
 };
 
 #endif // CONVOLUTIONALCODE_H

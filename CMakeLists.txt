@@ -10,15 +10,16 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 project(OFDM)
 
 # Append the -g flag to the compiler options
-# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2")
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2")
 
 # Add the library we want to build
 # add_library(ofdm SHARED constellation.cpp ofdm.cpp)
 
 # Use a wildcard pattern to include all .cpp files in the src directory
 file(GLOB SOURCES "src/*.cpp")
+list(APPEND SOURCES "src/ErrorCorrection/hammingCode.cpp")
 
 # Include directories
 include_directories(/Applications/MATLAB_R2022b.app/extern/include)

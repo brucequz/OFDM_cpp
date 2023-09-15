@@ -6,6 +6,9 @@ Scope of investigation:
   * Least Squares(LS)
   * Minimum Mean Squared Error(MMSE)
   * Linear Minimum Mean Square Error(LMMSE)
+* Channel Coding
+  * (7,4) Hamming Code
+
 
 
 ## Getting Started
@@ -83,6 +86,12 @@ Minimum Mean Square Error (MMSE): MMSE, on the other hand, assumes that the unde
 
 13. Carrier Frequency Offset and compensation? 
 > CFO estimation is the process of determining the frequency offset between the transmitter's carrier frequency and the receiver's local oscillator.
+
+14. Error correction Code implementation
+
+    Since the ofdm implemented in this project can only transmit 10 ofdm symbols over 16 distinct carriers, coding before the actual symbol transmission will result in no transmission on the last few symbols. For example, if the code rate is 4/7, then only the first 160 * (4/7) data symbols will be transmitted in a single OFDM block.
+
+    There are two ways to solve this problem: 1. truncate unsent symbols and only calculate the BER/SER on symbols that were actually transmitted. 2. send the left-over symbols using the next OFDM block. The second method is better as it reflects the reality. However, it would add tremendous complexity to the decoder as the last symbol in a single ofdm block cannot be decoded successfully.
 ```
 (10 x 16)
              *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  * 

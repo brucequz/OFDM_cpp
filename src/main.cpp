@@ -12,6 +12,7 @@
 #include "constellation.h"
 #include "ofdm.h"
 #include "ErrorCorrection/hammingCode.h"
+#include "../include/eigen/Dense"
 
 void print1DVector(const std::vector<int>& vec);
 void output1DVector(std::ofstream& outputFile, const std::vector<int>& vec);
@@ -52,6 +53,9 @@ int main() {
   config["Pilot"] = 1;      // pilot config
 
   Ofdm ofdm(config);
+
+  // Forward Error Correction Code
+  HammingCode hmc;
 
   // ------------------------------- Execution Cycle
   // ----------------------------------- Symbol Error Rate for different
@@ -101,6 +105,18 @@ int main() {
         std::vector<int> data_bits = ofdm.convertIntToBits(data_int, mod);
         // outputFile << "Outputing bits vector" << std::endl;
         // output1DVector(outputFile, data_bits);
+        
+
+        // convert to Eigen Vector and encode
+        Eigen::RowVectorXi eigen_bits = Eigen::Map<const Eigen::VectorXi>(data_bits.data(), data_bits.size());
+        // divide the input eigen_bits into 
+        Eigen::RowVectorXi coded_bits = hmc.encodeHammingCode(eigen_bits);
+
+        outputFile << "Outputing uncoded bits" << std::endl;
+        outputFile << eigen_bits.size() << std::endl;
+        outputFile << "Outputing coded bits" << std::endl;
+        outputFile << coded_bits.size() << std::endl;
+         
 
         std::vector<std::vector<std::complex<double>>> data_sym =
             ofdm.generateModulatedSignal(data_int, mod);

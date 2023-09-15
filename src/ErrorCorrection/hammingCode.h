@@ -21,6 +21,8 @@ private:
     // TODO: Add any private members or helper functions if needed
     Eigen::Matrix<int, 4, 7> generatorMatrix;
     Eigen::Matrix<int, 3, 7> parityCheckMatrix;
+    int k_;
+    int v_;
 };
 
 #endif  // HAMMINGCODE_H

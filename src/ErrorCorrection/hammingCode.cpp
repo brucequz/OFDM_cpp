@@ -1,5 +1,7 @@
 #include "hammingCode.h"
 #include <iostream>
+#include <cmath>
+#include <algorithm>
 
 // Constructor
 HammingCode::HammingCode() {
@@ -11,6 +13,9 @@ HammingCode::HammingCode() {
     parityCheckMatrix << 1, 1, 1, 0, 1, 0, 0,
                          1, 1, 0, 1, 0, 1, 0,
                          1, 0, 1, 1, 0, 0, 1;
+    // TODO: initialize k_ and v_
+    k_ = generatorMatrix.rows();
+    v_ = generatorMatrix.cols();
 }
 
 // Destructor
@@ -21,16 +26,39 @@ HammingCode::~HammingCode() {
 // Function to generate Hamming code from input data
 
 Eigen::VectorXi HammingCode::encodeHammingCode(const Eigen::VectorXi& data) {
-    // Ensure that the input data has a size of 4 (information bits)
-    assert(data.size() == 4);
+  // Calculate the number of chunks (blocks) required to encode the input
+  int numChunks = (data.size() + k_ - 1) / k_;
 
-    Eigen::VectorXi encodedData = (data.transpose() * generatorMatrix).cast<int>();
+  // Calculate the size of the padded chunk
+  int paddedChunkSize = k_;
 
-    for (int i = 0; i < encodedData.size(); ++i) {
-        encodedData[i] %= 2;
-    }
+  // Initialize the encoded data vector with appropriate size
+  Eigen::VectorXi encodedData(numChunks * v_);
 
-    return encodedData;
+  for (int chunkIdx = 0; chunkIdx < numChunks; ++chunkIdx) {
+      // Calculate the start and end indices for the current chunk
+      int startIdx = chunkIdx * k_;
+      int endIdx = std::min<int>((chunkIdx + 1) * k_, data.size());
+
+      // Extract the current chunk of input data
+      Eigen::VectorXi chunk = data.segment(startIdx, endIdx - startIdx);
+
+      // Pad the current chunk with zeros if it's shorter than k_
+      if (chunk.size() < paddedChunkSize) {
+          Eigen::VectorXi paddedChunk(paddedChunkSize);
+          paddedChunk.head(chunk.size()) = chunk;
+          paddedChunk.tail(paddedChunkSize - chunk.size()).setZero();
+          chunk = paddedChunk;
+      }
+
+      // Encode the current chunk and append to the output vector
+      Eigen::VectorXi encodedChunk = (chunk.transpose() * generatorMatrix).cast<int>();
+      for (int i = 0; i < encodedChunk.size(); ++i) {
+          encodedData[chunkIdx * v_ + i] = encodedChunk[i] % 2;
+      }
+  }
+
+  return encodedData;
 }
 
 // Function to decode received Hamming code
