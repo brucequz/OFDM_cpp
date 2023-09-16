@@ -3,10 +3,11 @@
 #define FEEDFORWARDTRELLIS_H
 
 #include <vector>
+#include "../helper.h"
 
 struct FeedForwardTrellis{
   FeedForwardTrellis(int k, int n, int m, std::vector<int> poly);
-  ~FeedForwardTrellis();
+  // ~FeedForwardTrellis(); 
 
 
   private:
@@ -18,8 +19,9 @@ struct FeedForwardTrellis{
     std::vector<std::vector<int>> output_;
 
     void computeNextStates();
+    void computeOutput();
     int octToDec(int octal);
-
+    Helper helper;
 };
 
 #endif
