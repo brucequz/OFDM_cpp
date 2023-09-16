@@ -8,6 +8,7 @@ Scope of investigation:
   * Linear Minimum Mean Square Error(LMMSE)
 * Channel Coding
   * (7,4) Hamming Code
+  * (1,2) Convolutional Code
 
 
 
@@ -19,6 +20,7 @@ The author of this project uses C++(14) and MATLAB(R_2022b). Addtional package m
 1. fftw3: Fast Fourier Transform library
 2. MATLAB Data API
 3. Eigen C++: A library for linear algebra
+4. Google Test: Unit Test
 
 ### Cmake commands
 ```
@@ -36,6 +38,8 @@ $ ./ofdm
 The author of this project uses the macOS built-in lldb debugger and AddressSanitizer. 
 
 To start debugging, use 'lldb ofdm' after cmake. Use "b ${file_name} : ${line_number}" to set a breakpoint. After setting breakpoints, use "r" to run the debugger.
+
+To set a watchpoint in a loop. Start a process first, and pause at a breakpoint where the watched variable is within scope. Use ```watch set var ${var_name}``` to set a watch point. And then add a new condition to this variable using ```watch modify -c '(${var_name} == ${watch_value})'```. Remove the breakpoint within the scope and continue the process. One can call ```watch list``` to check existing watchpoints.
 
 * s: step in
 * c: continue
