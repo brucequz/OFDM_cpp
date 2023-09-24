@@ -6,6 +6,37 @@
 
 #include "../helper.h"
 
+namespace {
+int octToDec(int octal) {
+  int base = 1;
+  int decNum = 0;
+
+  while (octal > 0) {
+    int digit = octal % 10;
+    decNum += digit * base;
+    base *= 8;
+    octal /= 10;
+  }
+
+  return decNum;
+}
+
+int decToOct(int decimal) {
+  int octal = 0;
+  int base = 1;  // Initialize the base for the rightmost digit
+
+  while (decimal > 0) {
+    int remainder = decimal % 8;  // Get the remainder when dividing by 8
+    octal += remainder * base;    // Add the remainder to the octal result
+    decimal /= 8;  // Divide the decimal number by 8 to move to the next digit
+    base *= 10;    // Update the base for the next digit position
+  }
+
+  return octal;
+}
+
+}  // namespace
+
 FeedForwardTrellis::FeedForwardTrellis(int k, int n, int m,
                                        std::vector<int> poly)
     : k_(k),
@@ -97,32 +128,4 @@ void FeedForwardTrellis::computeOutput() {
       }
     }
   }
-}
-
-int FeedForwardTrellis::octToDec(int octal) {
-  int base = 1;
-  int decNum = 0;
-
-  while (octal > 0) {
-    int digit = octal % 10;
-    decNum += digit * base;
-    base *= 8;
-    octal /= 10;
-  }
-
-  return decNum;
-}
-
-int FeedForwardTrellis::decToOct(int decimal) {
-  int octal = 0;
-  int base = 1; // Initialize the base for the rightmost digit
-
-  while (decimal > 0) {
-      int remainder = decimal % 8; // Get the remainder when dividing by 8
-      octal += remainder * base;    // Add the remainder to the octal result
-      decimal /= 8;                // Divide the decimal number by 8 to move to the next digit
-      base *= 10;                  // Update the base for the next digit position
-  }
-
-  return octal;
 }

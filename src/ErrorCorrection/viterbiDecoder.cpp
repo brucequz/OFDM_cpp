@@ -25,16 +25,18 @@ ViterbiDecoder::ViterbiDecoder(const FeedForwardTrellis& FFT) : trellis_(&FFT) {
 void ViterbiDecoder::constructDecodeTrellis(const std::vector<int>& received) {
   /*
    *  Construct a reverse trellis states with cells containing relevant
-   * information for viterbi decoding. Cell {
+   * information for viterbi decoding. 
+   *  Cell 
+   * {
    *    - branchMetric:
    *    - pathMetric:
    *    - init: whether or not a cell is activated, aka. reachable in the
    * decoding process.
-   *  }
+   * }
    */
   int message_length = received.size();
   int total_length = message_length / n_;
-  trellis_states_.resize(trellis_->numStates_,
+  trellis_states_.resize(numStates_,
                          std::vector<Cell>(total_length + 1));
   trellis_states_[0][0].pathMetric = 0;
   trellis_states_[0][0].init = true;
@@ -87,7 +89,7 @@ void ViterbiDecoder::constructDecodeTrellis(const std::vector<int>& received) {
 std::vector<int> ViterbiDecoder::decode(const std::vector<int>& received) {
   // construct trace back trellis
   constructDecodeTrellis(received);
-
+  
   std::vector<int> result;
 
   return result;

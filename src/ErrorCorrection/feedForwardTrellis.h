@@ -5,6 +5,8 @@
 #include <vector>
 #include "../helper.h"
 #include "viterbiDecoder.h"
+#include "viterbiCodec.h"
+
 
 struct FeedForwardTrellis{
   FeedForwardTrellis(int k, int n, int m, std::vector<int> poly);
@@ -25,10 +27,9 @@ struct FeedForwardTrellis{
 
     void computeNextStates();
     void computeOutput();
-    int octToDec(int octal);
-    int decToOct(int decimal);
     Helper helper;
     friend class ViterbiDecoder;
+    friend class ViterbiCodec;
 };
 
 #endif
