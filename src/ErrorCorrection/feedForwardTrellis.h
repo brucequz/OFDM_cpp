@@ -4,14 +4,13 @@
 
 #include <vector>
 #include "../helper.h"
+#include "viterbiDecoder.h"
 
 struct FeedForwardTrellis{
   FeedForwardTrellis(int k, int n, int m, std::vector<int> poly);
   // ~FeedForwardTrellis(); 
 
   std::vector<int> encode(const std::vector<int>& message);
-
-
 
   private:
     int k_;
@@ -29,6 +28,7 @@ struct FeedForwardTrellis{
     int octToDec(int octal);
     int decToOct(int decimal);
     Helper helper;
+    friend class ViterbiDecoder;
 };
 
 #endif
