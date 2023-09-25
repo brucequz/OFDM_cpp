@@ -38,6 +38,7 @@ ViterbiCodec::ViterbiCodec(int k, int n, int m, std::vector<int> poly)
       m_(m) {
   trellis_ptr_ = new FeedForwardTrellis(k, n, m, poly);
   numStates_ = std::pow(2, m);
+  list_size_ = 1;
 }
 
 ViterbiCodec::~ViterbiCodec() {
@@ -52,6 +53,10 @@ std::vector<int> ViterbiCodec::encode(const std::vector<int>& message) {
 std::vector<int> ViterbiCodec::viterbiDecode(const std::vector<int>& coded) {
   constructTrellis(coded);
   std::vector<int> result;
+  
+  int num_path_searched = 0;
+
+  
 
   return result;
 }
