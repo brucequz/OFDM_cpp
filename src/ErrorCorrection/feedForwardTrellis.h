@@ -4,7 +4,6 @@
 
 #include <vector>
 #include "../helper.h"
-#include "viterbiDecoder.h"
 #include "viterbiCodec.h"
 
 
@@ -28,7 +27,6 @@ struct FeedForwardTrellis{
     void computeNextStates();
     void computeOutput();
     Helper helper;
-    friend class ViterbiDecoder;
     friend class ViterbiCodec;
 };
 

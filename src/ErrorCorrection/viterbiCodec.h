@@ -1,10 +1,18 @@
 #ifndef VITERBICODEC_H
 #define VITERBICODEC_H
 
-#include "feedForwardTrellis.h"
-#include "viterbiDecoder.h"
+#include <vector>
+#include <climits>
 
-struct Cell;
+class FeedForwardTrellis;
+
+struct Cell{
+  int pathMetric = INT_MAX;
+  int fatherState = -1;
+  bool init = false;
+  int subPathMetric = INT_MAX;
+  int subFatherState = -1;
+};
 
 struct messageInformation {
   messageInformation() {};
