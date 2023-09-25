@@ -26,7 +26,6 @@ TEST(MinHeapTest, HeapOperation) {
   EXPECT_EQ(heap.pop().path_metric, 3);
 }
 
-
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();

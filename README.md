@@ -9,6 +9,8 @@ Scope of investigation:
 * Channel Coding
   * (7,4) Hamming Code
   * (1,2) Convolutional Code
+    * Hard decisions using Hamming distance as metrics
+    
 
 
 

@@ -5,8 +5,10 @@
 #include <vector>
 
 struct DetourNode {
-  DetourNode(){};
-  int path_metric;
+  DetourNode() : original_state(-1) {};
+  int path_metric;  // pathMetric
+  int original_state;
+  int start_state;
   bool operator>(const DetourNode& other) const {
     return this->path_metric > other.path_metric;
   }

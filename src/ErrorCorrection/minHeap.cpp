@@ -6,7 +6,7 @@ void MinHeap::insert(DetourNode node) {
   /*
    * append it to the end, and then swap with parent if necessary.
    */
-  heap_.push_back(node);
+  heap_.push_back(node); 
   int index = heap_.size() - 1;
   while (index > 0 && heap_[parentIndex(index)] > node) {
     std::swap(heap_[index], heap_[parentIndex(index)]);
